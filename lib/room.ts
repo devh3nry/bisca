@@ -62,9 +62,23 @@ function pushLog(room: Room, line: string) {
   if (room.log.length > 40) room.log.length = 40;
 }
 
+/** A carta virada não pode ser ás nem 7 — se sair, embaralha tudo de novo. */
+export function trumpAllowed(card: Card): boolean {
+  const rank = rankOf(card);
+  return rank !== "A" && rank !== "7";
+}
+
 /** Distribui as cartas e começa a partida. O primeiro a jogar é `firstSeat`. */
 export function deal(room: Room, firstSeat = 0): void {
-  const deck = shuffle(newDeck());
+  let deck = shuffle(newDeck());
+  let redeals = 0;
+
+  // 8 das 40 cartas são ás ou 7, então isso resolve em pouquíssimas tentativas.
+  // O limite é só uma trava de segurança pra nunca virar laço infinito.
+  while (!trumpAllowed(deck[deck.length - 1]) && redeals < 100) {
+    deck = shuffle(newDeck());
+    redeals++;
+  }
 
   room.hands = Array.from({ length: room.size }, () => []);
   for (let round = 0; round < 3; round++) {

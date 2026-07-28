@@ -80,6 +80,10 @@ export function Rules({ compact = false }: { compact?: boolean }) {
                 <b>Ás preso</b> — não dá pra <i>puxar</i> com o ás de trunfo
                 enquanto o 7 de trunfo não tiver saído. Respondendo, pode.
               </li>
+              <li>
+                <b>Virada limpa</b> — a carta virada nunca é um ás nem um 7. Se
+                cair uma dessas, o baralho é embaralhado de novo.
+              </li>
             </ul>
 
             <h3>Placar do jogo</h3>

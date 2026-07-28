@@ -15,6 +15,9 @@ código de 4 letras e jogue.
 - **Ás preso** — não dá pra *puxar* (sair na vaza) com o ás de trunfo enquanto o
   7 de trunfo não tiver saído. Respondendo a outra carta o ás é livre, e se for a
   única carta na mão também — senão o jogador travava sem ter o que jogar.
+- **Virada limpa** — a carta virada nunca é ás nem 7. Se sair uma dessas na hora
+  de dar, o baralho inteiro é embaralhado de novo (não é trocada por outra carta,
+  o que enviesaria o monte).
 
 ### Placar do jogo (até 4 pontos)
 

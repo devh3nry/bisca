@@ -5,8 +5,10 @@ import {
   BLOCK_ACE_REASON,
   blockedCards,
   createRoom,
+  deal,
   playCard,
   rematch,
+  trumpAllowed,
 } from "../lib/room";
 import { MATCH_TARGET, type Room } from "../lib/types";
 
@@ -32,6 +34,40 @@ function mesa(size: 2 | 4, hands: string[][], trump: string, deck: string[] = []
   room.leader = 0;
   room.turn = 0;
   return room;
+}
+
+// ---------- a carta virada nunca pode ser ás nem 7 ----------
+
+{
+  const vistos = new Map<string, number>();
+  for (let i = 0; i < 3000; i++) {
+    const room = createRoom("TEST", 2, "host");
+    for (let seat = 0; seat < 2; seat++) {
+      room.players.push({ id: `p${seat}`, name: `P${seat}`, seat });
+    }
+    deal(room, 0);
+
+    const rank = room.trump!.slice(0, -1);
+    vistos.set(rank, (vistos.get(rank) ?? 0) + 1);
+    ok(rank !== "A", "carta virada nunca é ás");
+    ok(rank !== "7", "carta virada nunca é 7");
+    ok(trumpAllowed(room.trump!), "trumpAllowed concorda com o que foi dado");
+
+    // e o baralho tem que continuar completo depois do reembaralhamento
+    const todas = [...room.deck, room.trump!, ...room.hands.flat()];
+    ok(todas.length === 40, "40 cartas depois de redistribuir");
+    ok(new Set(todas).size === 40, "sem carta repetida depois de redistribuir");
+  }
+
+  // Os 8 valores permitidos têm que aparecer — senão o filtro comeu demais.
+  const esperados = ["2", "3", "4", "5", "6", "J", "Q", "K"];
+  for (const rank of esperados) {
+    ok(vistos.has(rank), `carta virada ${rank} aparece em algum momento`);
+  }
+  console.log(
+    "  viradas em 3000 mãos:",
+    [...vistos.entries()].sort().map(([r, n]) => `${r}=${n}`).join(" ")
+  );
 }
 
 // ---------- ás de trunfo não pode puxar ----------

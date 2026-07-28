@@ -3,10 +3,48 @@ import type { Room } from "./types";
 
 const TTL_SECONDS = 60 * 60 * 6; // salas expiram 6h depois da última jogada
 
-const hasUpstash =
-  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+/**
+ * A integração da Vercel batiza as variáveis de formas diferentes conforme por
+ * onde o Redis foi criado: `UPSTASH_REDIS_REST_URL`, `KV_REST_API_URL`, ou com
+ * o prefixo que a pessoa escolher no diálogo de conexão. Em vez de exigir um
+ * nome exato, procuramos pelo sufixo — assim qualquer prefixo funciona.
+ */
+function findEnv(suffixes: string[]): { name: string; value: string } | null {
+  for (const suffix of suffixes) {
+    for (const [name, value] of Object.entries(process.env)) {
+      if (value && name.endsWith(suffix)) return { name, value };
+    }
+  }
+  return null;
+}
 
-const redis = hasUpstash ? Redis.fromEnv() : null;
+const restUrl = findEnv([
+  "UPSTASH_REDIS_REST_URL",
+  "KV_REST_API_URL",
+  "REDIS_REST_URL",
+  "REST_API_URL",
+]);
+
+const restToken = findEnv([
+  "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_TOKEN",
+  "REDIS_REST_TOKEN",
+  "REST_API_TOKEN",
+]);
+
+// O cliente é HTTP: um `REDIS_URL` no formato rediss:// não serve aqui.
+const hasUpstash =
+  !!restUrl && !!restToken && restUrl.value.startsWith("https://");
+
+const redis = hasUpstash
+  ? new Redis({ url: restUrl!.value, token: restToken!.value })
+  : null;
+
+/** Só os nomes das variáveis encontradas — nunca os valores. */
+export const redisEnvNames = {
+  url: restUrl?.name ?? null,
+  token: restToken?.name ?? null,
+};
 
 // Fallback em memória pro `next dev` sem Redis configurado. Não sobrevive a
 // mais de uma instância — em produção configure sempre o Upstash.

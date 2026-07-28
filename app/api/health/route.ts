@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
-import { usingRedis } from "@/lib/store";
+import { redisEnvNames, usingRedis } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
-/** Diz se o Redis está configurado — sem ele o multijogador não funciona. */
+/**
+ * Diz se o Redis está ligado — sem ele o multijogador não funciona. Mostra
+ * também os NOMES das variáveis de ambiente que parecem ser de Redis, pra dar
+ * pra ver de fora se a integração usou um nome inesperado. Valores nunca.
+ */
 export async function GET() {
-  return NextResponse.json({ redis: usingRedis });
+  const candidates = Object.keys(process.env)
+    .filter((name) => /REDIS|KV_|UPSTASH/i.test(name))
+    .sort();
+
+  return NextResponse.json({
+    redis: usingRedis,
+    usando: redisEnvNames,
+    variaveisEncontradas: candidates,
+  });
 }

@@ -6,7 +6,18 @@ import { CardBack, PlayingCard } from "@/components/Card";
 import type { PlayerView } from "@/lib/types";
 import { loadName, loadPlayerId, savePlayerId } from "@/lib/session";
 
-const POLL_MS = 900;
+// Cada sondagem é um comando no Redis e o plano free do Upstash dá 500K/mês.
+// Por isso: ritmo rápido só quando há mesmo uma jogada para aparecer, mais
+// lento à espera de gente ou no fim, e parado com o separador escondido.
+const POLL_ACTIVE_MS = 900;
+const POLL_IDLE_MS = 3000;
+
+function pollDelay(state: PlayerView | null): number {
+  if (!state) return POLL_ACTIVE_MS;
+  if (state.phase !== "playing") return POLL_IDLE_MS;
+  // Na nossa vez não há nada a chegar do servidor até jogarmos.
+  return state.yourTurn ? POLL_IDLE_MS : POLL_ACTIVE_MS;
+}
 
 const SUIT_NAMES: Record<string, string> = {
   S: "Espadas",
@@ -23,6 +34,8 @@ export default function RoomClient({ code }: { code: string }) {
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
   const idRef = useRef<string | null>(null);
+  const stateRef = useRef<PlayerView | null>(null);
+  stateRef.current = state;
 
   // Entra (ou volta a entrar) na sala.
   useEffect(() => {
@@ -74,14 +87,37 @@ export default function RoomClient({ code }: { code: string }) {
     }
   }, [code]);
 
+  // Ritmo adaptativo, e nada de sondar com o separador escondido — uma aba
+  // esquecida aberta gastava a quota do Redis a noite toda.
   useEffect(() => {
     if (!playerId) return;
-    const timer = setInterval(refresh, POLL_MS);
-    const onFocus = () => refresh();
-    window.addEventListener("focus", onFocus);
+
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      if (!document.hidden) await refresh();
+      if (stopped) return;
+      timer = setTimeout(tick, pollDelay(stateRef.current));
+    };
+
+    timer = setTimeout(tick, pollDelay(stateRef.current));
+
+    const onVisible = () => {
+      if (!document.hidden) {
+        clearTimeout(timer);
+        tick();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
     return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
     };
   }, [playerId, refresh]);
 

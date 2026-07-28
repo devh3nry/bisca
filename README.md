@@ -9,7 +9,16 @@ código de 4 letras e joga.
 - **Troca do 2**: quem tiver o 2 do naipe de trunfo pode trocá-lo pela carta virada.
   Vale a qualquer momento da partida (não só na primeira ronda), na sua vez e
   antes de jogar, enquanto o trunfo não tiver sido comprado.
-- Estado partilhado no Redis, cliente sincroniza por polling (~900 ms)
+- Estado partilhado no Redis, cliente sincroniza por polling adaptativo
+
+## Consumo do Redis
+
+Cada sondagem é um comando, e o plano free do Upstash dá 500K/mês. Por isso o
+cliente sonda a 900 ms só quando há mesmo uma jogada do adversário para chegar;
+abranda para 3 s à espera de jogadores, no fim da partida e enquanto é a nossa
+vez (nada muda no servidor nesse intervalo), e **pára** com o separador
+escondido, retomando logo que volte a ficar visível. Medido: ~10 pedidos por
+10 s no cliente à espera, 0 com a aba em segundo plano.
 
 ## Correr localmente
 

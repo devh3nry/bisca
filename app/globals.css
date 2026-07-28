@@ -40,6 +40,33 @@ button:disabled {
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
 }
 
+/*
+ * Na mesa o tamanho das cartas vem daqui, não do atributo width do SVG: assim
+ * elas acompanham a tela em vez de ficarem miúdas num monitor grande. O termo
+ * em vh é o que impede a mesa de estourar num notebook baixinho — carta é 1,4x
+ * mais alta que larga, então só limitar pela largura não basta. O viewBox cuida
+ * da proporção, por isso height:auto.
+ */
+.table .hand .card-svg {
+  width: max(84px, min(11.5vw, 19vh, 168px));
+  height: auto;
+}
+
+.table .trick .card-svg {
+  width: max(76px, min(10.5vw, 15vh, 152px));
+  height: auto;
+}
+
+.table .stock .card-svg {
+  width: max(54px, min(7vw, 11vh, 104px));
+  height: auto;
+}
+
+.table .mini-hand .card-svg {
+  width: max(40px, min(5vw, 8vh, 72px));
+  height: auto;
+}
+
 /* ---------- tela inicial ---------- */
 
 .home {
@@ -199,8 +226,8 @@ input:focus {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 12px;
-  gap: 10px;
+  padding: clamp(6px, 1.2vh, 12px);
+  gap: clamp(4px, 1vh, 10px);
 }
 
 .topbar {
@@ -227,10 +254,52 @@ input:focus {
   display: flex;
   gap: 14px;
   align-items: center;
+  font-size: 17px;
 }
 
 .score b {
   color: var(--gold);
+  font-size: 22px;
+}
+
+/* Trunfo em destaque: o naipe tem que dar pra ler sem chegar perto da tela. */
+.trump-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 16px 4px 12px;
+  border-radius: 12px;
+  background: #fbf6e4;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.trump-badge.red {
+  color: #c8102e;
+}
+
+.trump-badge.black {
+  color: #1a1a1a;
+}
+
+.trump-badge-glyph {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.trump-badge-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.trump-badge-text small {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.65;
+  font-weight: 700;
 }
 
 .table {
@@ -240,17 +309,16 @@ input:focus {
 .arena {
   flex: 0 1 auto;
   width: 100%;
-  max-width: 1000px;
-  max-height: 780px;
+  max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 110px 1fr 110px;
+  grid-template-columns: minmax(90px, 150px) 1fr minmax(90px, 150px);
   grid-template-rows: auto 1fr auto;
   grid-template-areas:
     ".    top    ."
     "left center right"
     ".   hand   .";
-  gap: 8px;
+  gap: clamp(2px, 0.8vh, 8px);
   align-items: center;
   justify-items: center;
 }
@@ -279,8 +347,8 @@ input:focus {
 }
 
 .seat-name {
-  font-size: 13px;
-  padding: 3px 10px;
+  font-size: 15px;
+  padding: 4px 12px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid transparent;
@@ -303,21 +371,21 @@ input:focus {
 }
 
 .mini-hand > * {
-  margin-inline: -16px;
+  margin-inline: -18px;
 }
 
 .center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: clamp(6px, 1.5vh, 14px);
   width: 100%;
 }
 
 .trick {
   display: flex;
   gap: 10px;
-  min-height: 150px;
+  min-height: 14vh;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
@@ -345,8 +413,8 @@ input:focus {
 }
 
 .played span {
-  font-size: 11px;
-  opacity: 0.7;
+  font-size: 14px;
+  opacity: 0.75;
 }
 
 .played.winner span {
@@ -358,28 +426,24 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 92px;
 }
 
-/* A carta do trunfo fica deitada embaixo do monte, como na mesa de verdade. */
+/*
+ * A carta do trunfo fica em pé, só recuada sobre o monte. Deitada ficava
+ * ilegível de longe, que era justamente a queixa.
+ */
 .stock .trump-card {
-  width: 87px;
-  display: grid;
-  place-items: center;
-}
-
-.stock .trump-card > * {
-  transform: rotate(90deg);
+  margin-left: -22px;
 }
 
 .swap {
-  padding: 7px 13px;
+  padding: 9px 16px;
+  font-size: 15px;
   border-radius: 999px;
   border: 1px solid var(--gold);
   background: rgba(232, 195, 122, 0.14);
   color: var(--gold);
-  font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   animation: swap-pulse 1.8s ease-in-out infinite;
 }
@@ -402,9 +466,9 @@ input:focus {
 }
 
 .stock-count {
-  font-size: 12px;
+  font-size: 14px;
   opacity: 0.75;
-  margin-left: 6px;
+  margin-left: 10px;
 }
 
 .hand {
@@ -433,8 +497,9 @@ input:focus {
 
 .hint {
   text-align: center;
-  min-height: 22px;
-  font-size: 14px;
+  min-height: 24px;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--gold);
 }
 
@@ -478,9 +543,28 @@ input:focus {
   min-height: 18px;
 }
 
+/* Notebook baixinho: encolhe as cartas o suficiente pra mesa caber sem rolagem. */
+@media (max-height: 720px) {
+  .table .hand .card-svg {
+    width: max(84px, min(11.5vw, 16.5vh, 168px));
+  }
+  .table .trick .card-svg {
+    width: max(76px, min(10.5vw, 13vh, 152px));
+  }
+  .table .stock .card-svg {
+    width: max(54px, min(7vw, 9.5vh, 104px));
+  }
+}
+
 @media (max-width: 640px) {
   .arena {
-    grid-template-columns: 74px 1fr 74px;
+    grid-template-columns: 62px 1fr 62px;
+  }
+  .trump-badge-glyph {
+    font-size: 30px;
+  }
+  .trump-badge-text {
+    font-size: 14px;
   }
   .brand h1 {
     font-size: 40px;

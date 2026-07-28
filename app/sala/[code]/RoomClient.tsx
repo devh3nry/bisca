@@ -26,6 +26,28 @@ const SUIT_NAMES: Record<string, string> = {
   C: "Paus",
 };
 
+const SUIT_GLYPHS: Record<string, string> = {
+  S: "♠",
+  H: "♥",
+  D: "♦",
+  C: "♣",
+};
+
+const RED_SUITS = new Set(["H", "D"]);
+
+/** Naipe do trunfo em destaque no topo — dá pra ler sem chegar perto da tela. */
+function TrumpBadge({ suit }: { suit: string }) {
+  return (
+    <div className={`trump-badge ${RED_SUITS.has(suit) ? "red" : "black"}`}>
+      <span className="trump-badge-glyph">{SUIT_GLYPHS[suit]}</span>
+      <span className="trump-badge-text">
+        <small>TRUNFO</small>
+        {SUIT_NAMES[suit]}
+      </span>
+    </div>
+  );
+}
+
 export default function RoomClient({ code }: { code: string }) {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [state, setState] = useState<PlayerView | null>(null);
@@ -243,6 +265,7 @@ export default function RoomClient({ code }: { code: string }) {
         >
           {copied ? "COPIADO" : code}
         </button>
+        {state.trumpSuit && <TrumpBadge suit={state.trumpSuit} />}
         <div className="score">
           <span>
             Nós <b>{state.scores[state.you?.team ?? 0]}</b>
@@ -296,10 +319,7 @@ export default function RoomClient({ code }: { code: string }) {
                   <PlayingCard code={state.trump} width={62} />
                 </div>
               )}
-              <span className="stock-count">
-                {state.trumpSuit && `Trunfo: ${SUIT_NAMES[state.trumpSuit]}`} ·{" "}
-                {state.deckCount} no monte
-              </span>
+              <span className="stock-count">{state.deckCount} no monte</span>
               {state.canSwapTrump && (
                 <button
                   className="swap"

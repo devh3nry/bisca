@@ -6,8 +6,9 @@ const GLYPH: Record<Suit, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const IS_RED: Record<Suit, boolean> = { S: false, H: true, D: true, C: false };
 
 // Grade de naipes, no sistema de coordenadas do viewBox 0 0 250 350.
-const COL = { L: 76, C: 125, R: 174 };
-const ROW = [78, 111, 143, 175, 207, 239, 272];
+// Recuada dos cantos porque o índice de canto é grande, pra dar pra ler de longe.
+const COL = { L: 88, C: 125, R: 162 };
+const ROW = [88, 118, 147, 175, 203, 232, 262];
 
 type Pip = { x: number; y: number; scale?: number };
 
@@ -46,7 +47,7 @@ const LAYOUTS: Record<string, Pip[]> = {
   "7": [
     { x: COL.L, y: ROW[0] },
     { x: COL.R, y: ROW[0] },
-    { x: COL.C, y: 127 },
+    { x: COL.C, y: 131 },
     { x: COL.L, y: ROW[3] },
     { x: COL.R, y: ROW[3] },
     { x: COL.L, y: ROW[6] },
@@ -70,16 +71,16 @@ function CornerIndex({
       }
     >
       <text
-        x={26}
-        y={48}
+        x={34}
+        y={62}
         textAnchor="middle"
-        fontSize={40}
+        fontSize={56}
         fontWeight={700}
         fontFamily="Georgia, 'Times New Roman', serif"
       >
         {rank}
       </text>
-      <text x={26} y={84} textAnchor="middle" fontSize={32}>
+      <text x={34} y={108} textAnchor="middle" fontSize={44}>
         {glyph}
       </text>
     </g>

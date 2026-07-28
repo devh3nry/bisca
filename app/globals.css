@@ -357,6 +357,35 @@ input:focus {
   transform: rotate(90deg);
 }
 
+.swap {
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  background: rgba(232, 195, 122, 0.14);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: swap-pulse 1.8s ease-in-out infinite;
+}
+
+.swap:hover:not(:disabled) {
+  background: var(--gold);
+  color: #24170a;
+}
+
+@keyframes swap-pulse {
+  50% {
+    box-shadow: 0 0 14px rgba(232, 195, 122, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swap {
+    animation: none;
+  }
+}
+
 .stock-count {
   font-size: 12px;
   opacity: 0.75;

@@ -63,9 +63,41 @@ if (bad.status !== 409) throw new Error("deixou jogar fora da vez");
 console.log("bloqueio de vez ok");
 
 let moves = 0;
+let swaps = 0;
 while (state.phase === "playing") {
   const seat = state.turn;
-  const view = await api(`/api/rooms/${code}?playerId=${ids[seat]}`);
+  let view = await api(`/api/rooms/${code}?playerId=${ids[seat]}`);
+
+  if (view.canSwapTrump) {
+    const turned = view.trump;
+    const two = `2${view.trumpSuit}`;
+    view = await api(`/api/rooms/${code}/swap`, {
+      method: "POST",
+      body: JSON.stringify({ playerId: ids[seat] }),
+    });
+    if (view.trump !== two) throw new Error("a carta virada não ficou o 2");
+    if (!view.hand.includes(turned)) throw new Error("a mão não recebeu o trunfo");
+    if (view.hand.length !== 3) throw new Error("a troca mudou o tamanho da mão");
+    if (view.canSwapTrump) throw new Error("a troca ficou repetível");
+
+    const repeat = await fetch(`${BASE}/api/rooms/${code}/swap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ playerId: ids[seat] }),
+    });
+    if (repeat.status !== 409) throw new Error("deixou trocar duas vezes");
+
+    const other = await fetch(`${BASE}/api/rooms/${code}/swap`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ playerId: ids[seat === 0 ? 1 : 0] }),
+    });
+    if (other.status !== 409) throw new Error("deixou trocar fora da vez");
+
+    swaps++;
+    console.log(`troca do 2 de trunfo ok (jogada ${moves})`);
+  }
+
   const card = view.hand[0];
   state = await api(`/api/rooms/${code}/play`, {
     method: "POST",
@@ -76,7 +108,13 @@ while (state.phase === "playing") {
 
 const total = state.scores[0] + state.scores[1];
 if (total !== 120) throw new Error(`pontos = ${total}`);
-console.log("fim:", state.scores.join(" — "), "| vencedor equipa", state.winner);
+console.log(
+  "fim:",
+  state.scores.join(" — "),
+  "| vencedor equipa",
+  state.winner,
+  `| trocas: ${swaps}`
+);
 
 const restarted = await api(`/api/rooms/${code}/rematch`, {
   method: "POST",

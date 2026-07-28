@@ -57,6 +57,7 @@ export type PlayerView = {
   leader: number;
   turn: number;
   yourTurn: boolean;
+  canSwapTrump: boolean;
   scores: number[];
   tricks: number[];
   lastTrick: Play[] | null;

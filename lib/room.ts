@@ -110,6 +110,43 @@ export type PlayResult =
   | { ok: true }
   | { ok: false; error: string; status: number };
 
+/** A carta que permite trocar pelo trunfo: o 2 do naipe de trunfo. */
+export function swapCardFor(room: Room): Card | null {
+  return room.trumpSuit ? `2${room.trumpSuit}` : null;
+}
+
+/**
+ * Quem tiver o 2 de trunfo pode trocá-lo pela carta virada. Vale em qualquer
+ * altura da partida (não só na primeira ronda), desde que seja a sua vez, ainda
+ * não tenha jogado a carta da vaza e o trunfo continue por comprar.
+ */
+export function canSwapTrump(room: Room, seat: number): boolean {
+  if (room.phase !== "playing") return false;
+  if (room.turn !== seat) return false;
+  if (!room.trump || room.trumpTaken) return false;
+  const swapCard = swapCardFor(room);
+  return !!swapCard && room.hands[seat].includes(swapCard);
+}
+
+export function swapTrump(room: Room, seat: number): PlayResult {
+  if (!canSwapTrump(room, seat)) {
+    return {
+      ok: false,
+      error: "Não podes trocar o trunfo agora.",
+      status: 409,
+    };
+  }
+
+  const swapCard = swapCardFor(room)!;
+  const hand = room.hands[seat];
+  hand[hand.indexOf(swapCard)] = room.trump!;
+
+  pushLog(room, `${nameOf(room, seat)} trocou o ${swapCard[0]} pelo trunfo.`);
+  room.trump = swapCard;
+  room.version++;
+  return { ok: true };
+}
+
 export function playCard(room: Room, seat: number, card: Card): PlayResult {
   if (room.phase !== "playing") {
     return { ok: false, error: "A partida não está a decorrer.", status: 409 };
@@ -220,6 +257,7 @@ export function toView(room: Room, playerId: string | null): PlayerView {
     leader: room.leader,
     turn: room.turn,
     yourTurn: room.phase === "playing" && seat >= 0 && room.turn === seat,
+    canSwapTrump: seat >= 0 && canSwapTrump(room, seat),
     scores: room.scores,
     tricks: room.tricks,
     lastTrick: room.lastTrick,

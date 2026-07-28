@@ -109,6 +109,30 @@ export default function RoomClient({ code }: { code: string }) {
     }
   }
 
+  async function swapTrump() {
+    if (!playerId || sending) return;
+    setSending(true);
+    setNotice("");
+    try {
+      const response = await fetch(`/api/rooms/${code}/swap`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ playerId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setNotice(data.error ?? "Não deu para trocar.");
+        if (data.state) setState(data.state);
+      } else {
+        setState(data);
+      }
+    } catch {
+      setNotice("Sem ligação — tenta outra vez.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function rematch() {
     if (!playerId) return;
     setSending(true);
@@ -240,6 +264,16 @@ export default function RoomClient({ code }: { code: string }) {
                 {state.trumpSuit && `Trunfo: ${SUIT_NAMES[state.trumpSuit]}`} ·{" "}
                 {state.deckCount} no monte
               </span>
+              {state.canSwapTrump && (
+                <button
+                  className="swap"
+                  onClick={swapTrump}
+                  disabled={sending}
+                  title="Trocar o teu 2 de trunfo pela carta virada"
+                >
+                  ⇄ Trocar o 2 pelo trunfo
+                </button>
+              )}
             </div>
           )}
         </div>

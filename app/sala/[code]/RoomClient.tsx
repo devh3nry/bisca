@@ -8,14 +8,14 @@ import { loadName, loadPlayerId, savePlayerId } from "@/lib/session";
 
 // Cada sondagem é um comando no Redis e o plano free do Upstash dá 500K/mês.
 // Por isso: ritmo rápido só quando há mesmo uma jogada para aparecer, mais
-// lento à espera de gente ou no fim, e parado com o separador escondido.
+// lento esperando gente ou no fim, e parado com a aba em segundo plano.
 const POLL_ACTIVE_MS = 900;
 const POLL_IDLE_MS = 3000;
 
 function pollDelay(state: PlayerView | null): number {
   if (!state) return POLL_ACTIVE_MS;
   if (state.phase !== "playing") return POLL_IDLE_MS;
-  // Na nossa vez não há nada a chegar do servidor até jogarmos.
+  // Na nossa vez não tem nada pra chegar do servidor até jogarmos.
   return state.yourTurn ? POLL_IDLE_MS : POLL_ACTIVE_MS;
 }
 
@@ -37,7 +37,7 @@ export default function RoomClient({ code }: { code: string }) {
   const stateRef = useRef<PlayerView | null>(null);
   stateRef.current = state;
 
-  // Entra (ou volta a entrar) na sala.
+  // Entra (ou volta a entrar) na mesa.
   useEffect(() => {
     let cancelled = false;
 
@@ -52,7 +52,7 @@ export default function RoomClient({ code }: { code: string }) {
         const data = await response.json();
         if (cancelled) return;
         if (!response.ok) {
-          setError(data.error ?? "Não foi possível entrar na sala.");
+          setError(data.error ?? "Não deu pra entrar na mesa.");
           return;
         }
         savePlayerId(code, data.playerId);
@@ -60,7 +60,7 @@ export default function RoomClient({ code }: { code: string }) {
         setPlayerId(data.playerId);
         setState(data.state);
       } catch {
-        if (!cancelled) setError("Sem ligação ao servidor.");
+        if (!cancelled) setError("Sem conexão com o servidor.");
       }
     })();
 
@@ -83,12 +83,12 @@ export default function RoomClient({ code }: { code: string }) {
         current && current.version > data.version ? current : data
       );
     } catch {
-      /* falha de rede pontual: a próxima ronda apanha */
+      /* falha de rede pontual: a próxima sondagem pega */
     }
   }, [code]);
 
-  // Ritmo adaptativo, e nada de sondar com o separador escondido — uma aba
-  // esquecida aberta gastava a quota do Redis a noite toda.
+  // Ritmo adaptativo, e nada de sondar com a aba em segundo plano — uma aba
+  // esquecida aberta gastava a cota do Redis a noite toda.
   useEffect(() => {
     if (!playerId) return;
 
@@ -139,7 +139,7 @@ export default function RoomClient({ code }: { code: string }) {
         setState(data);
       }
     } catch {
-      setNotice("Sem ligação — tenta outra vez.");
+      setNotice("Sem conexão — tente de novo.");
     } finally {
       setSending(false);
     }
@@ -157,13 +157,13 @@ export default function RoomClient({ code }: { code: string }) {
       });
       const data = await response.json();
       if (!response.ok) {
-        setNotice(data.error ?? "Não deu para trocar.");
+        setNotice(data.error ?? "Não deu pra trocar.");
         if (data.state) setState(data.state);
       } else {
         setState(data);
       }
     } catch {
-      setNotice("Sem ligação — tenta outra vez.");
+      setNotice("Sem conexão — tente de novo.");
     } finally {
       setSending(false);
     }
@@ -192,17 +192,17 @@ export default function RoomClient({ code }: { code: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
       })
-      .catch(() => setNotice("Copia o endereço da barra do navegador."));
+      .catch(() => setNotice("Copie o endereço da barra do navegador."));
   }
 
   if (error) {
     return (
       <main className="home">
         <div className="home-inner panel" style={{ textAlign: "center" }}>
-          <h2>Sala {code}</h2>
+          <h2>Mesa {code}</h2>
           <p className="error">{error}</p>
           <Link href="/">
-            <button className="btn">Voltar ao início</button>
+            <button className="btn">Voltar pro início</button>
           </Link>
         </div>
       </main>
@@ -212,7 +212,7 @@ export default function RoomClient({ code }: { code: string }) {
   if (!state) {
     return (
       <main className="home">
-        <p style={{ opacity: 0.7 }}>A entrar na sala {code}…</p>
+        <p style={{ opacity: 0.7 }}>Entrando na mesa {code}…</p>
       </main>
     );
   }
@@ -238,7 +238,7 @@ export default function RoomClient({ code }: { code: string }) {
         <button
           className="code-chip"
           onClick={copyLink}
-          title="Copiar o link da sala"
+          title="Copiar o link da mesa"
           style={{ border: "1px solid rgba(232,195,122,.3)" }}
         >
           {copied ? "COPIADO" : code}
@@ -283,7 +283,7 @@ export default function RoomClient({ code }: { code: string }) {
             ))}
             {trick.length === 0 && (
               <span style={{ opacity: 0.5 }}>
-                {waiting ? "À espera de jogadores…" : "Mesa vazia"}
+                {waiting ? "Esperando jogadores…" : "Mesa vazia"}
               </span>
             )}
           </div>
@@ -305,7 +305,7 @@ export default function RoomClient({ code }: { code: string }) {
                   className="swap"
                   onClick={swapTrump}
                   disabled={sending}
-                  title="Trocar o teu 2 de trunfo pela carta virada"
+                  title="Trocar o seu 2 de trunfo pela carta virada"
                 >
                   ⇄ Trocar o 2 pelo trunfo
                 </button>
@@ -318,12 +318,12 @@ export default function RoomClient({ code }: { code: string }) {
           <p className={`hint ${state.yourTurn ? "" : "muted"}`}>
             {notice ||
               (waiting
-                ? `À espera de ${size - state.players.length} jogador(es) — partilha o código ${code}`
+                ? `Falta ${size - state.players.length} jogador(es) — passe o código ${code}`
                 : state.phase === "done"
                   ? "Partida terminada"
                   : state.yourTurn
-                    ? "É a tua vez — escolhe uma carta"
-                    : `A jogar: ${nameOf(state, state.turn)}`)}
+                    ? "É a sua vez — escolha uma carta"
+                    : `Vez de ${nameOf(state, state.turn)}`)}
           </p>
           <div className="hand">
             {state.hand.map((card) => (
@@ -355,8 +355,8 @@ export default function RoomClient({ code }: { code: string }) {
               {state.winner === -1
                 ? "Empate!"
                 : state.winner === state.you?.team
-                  ? "Ganhaste! 🎉"
-                  : "Perdeste…"}
+                  ? "Você ganhou! 🎉"
+                  : "Você perdeu…"}
             </h2>
             <p className="big-score">
               {state.scores[state.you?.team ?? 0]} —{" "}
@@ -399,7 +399,7 @@ function Seat({
         ))}
       </div>
       <div className={`seat-name ${state.turn === seat ? "turn" : ""}`}>
-        {player?.name ?? "à espera…"}
+        {player?.name ?? "esperando…"}
         {isPartner && <span className="team"> · parceiro</span>}
       </div>
     </div>

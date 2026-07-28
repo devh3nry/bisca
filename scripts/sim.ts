@@ -1,5 +1,5 @@
-// Simulação de partidas completas para validar o motor.
-// Correr com: npx tsx scripts/sim.ts
+// Simulação de partidas completas pra validar o motor.
+// Rodar com: npx tsx scripts/sim.ts
 
 import {
   canSwapTrump,
@@ -28,7 +28,7 @@ function simulate(size: 2 | 4, games: number) {
       const hand = room.hands[seat];
       if (hand.length === 0) throw new Error(`Vez do lugar ${seat} sem cartas`);
       // Sempre que der, troca o 2 de trunfo — assim a troca entra em muitas
-      // partidas e os invariantes do fim continuam a ter de bater certo.
+      // partidas e os invariantes do fim continuam tendo que bater.
       if (canSwapTrump(room, seat)) {
         const two = swapCardFor(room)!;
         const turned = room.trump!;
@@ -61,7 +61,7 @@ function simulate(size: 2 | 4, games: number) {
 
     if (sumPoints(newDeck()) !== 120) throw new Error("Baralho não vale 120");
 
-    // A revanche tem de deixar o estado jogável outra vez.
+    // A revanche tem que deixar o estado jogável de novo.
     rematch(room);
     const phaseAfterRematch: string = room.phase;
     if (phaseAfterRematch !== "playing" || room.hands.some((h) => h.length !== 3)) {

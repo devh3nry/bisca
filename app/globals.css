@@ -40,7 +40,7 @@ button:disabled {
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
 }
 
-/* ---------- ecrã inicial ---------- */
+/* ---------- tela inicial ---------- */
 
 .home {
   min-height: 100vh;
@@ -176,6 +176,21 @@ input:focus {
   color: #ffb4a8;
   font-size: 14px;
   margin: 0 0 12px;
+}
+
+/* Aviso de Redis em falta: sem ele o multijogador não funciona em produção. */
+.warn {
+  background: rgba(180, 60, 40, 0.28);
+  border: 1px solid #ff9d8a;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.warn strong {
+  color: #ffb4a8;
 }
 
 /* ---------- mesa ---------- */
@@ -346,7 +361,7 @@ input:focus {
   height: 92px;
 }
 
-/* A carta do trunfo fica deitada por baixo do monte, como na mesa. */
+/* A carta do trunfo fica deitada embaixo do monte, como na mesa de verdade. */
 .stock .trump-card {
   width: 87px;
   display: grid;
@@ -410,7 +425,7 @@ input:focus {
   transform: translateY(-14px);
 }
 
-/* Sem opacidade: o feltro a atravessar a carta deixava-a esverdeada. */
+/* Sem opacidade: o feltro atravessando a carta deixava ela esverdeada. */
 .hand button:disabled {
   opacity: 1;
   filter: brightness(0.82) saturate(0.9);

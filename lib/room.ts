@@ -24,7 +24,7 @@ export function newId(): string {
 }
 
 export function createRoom(code: string, size: 2 | 4, hostId: string): Room {
-  const teams = 2; // 1v1 ou 2v2 — são sempre duas equipas
+  const teams = 2; // 1v1 ou 2v2 — são sempre dois times
   return {
     code,
     size,
@@ -56,7 +56,7 @@ function pushLog(room: Room, line: string) {
   if (room.log.length > 40) room.log.length = 40;
 }
 
-/** Reparte o baralho e arranca a partida. O primeiro a jogar é `firstSeat`. */
+/** Distribui as cartas e começa a partida. O primeiro a jogar é `firstSeat`. */
 export function deal(room: Room, firstSeat = 0): void {
   const deck = shuffle(newDeck());
 
@@ -117,8 +117,8 @@ export function swapCardFor(room: Room): Card | null {
 
 /**
  * Quem tiver o 2 de trunfo pode trocá-lo pela carta virada. Vale em qualquer
- * altura da partida (não só na primeira ronda), desde que seja a sua vez, ainda
- * não tenha jogado a carta da vaza e o trunfo continue por comprar.
+ * momento da partida (não só na primeira rodada), desde que seja a sua vez, ainda
+ * não tenha jogado a carta da vaza e o trunfo ainda não tenha sido comprado.
  */
 export function canSwapTrump(room: Room, seat: number): boolean {
   if (room.phase !== "playing") return false;
@@ -132,7 +132,7 @@ export function swapTrump(room: Room, seat: number): PlayResult {
   if (!canSwapTrump(room, seat)) {
     return {
       ok: false,
-      error: "Não podes trocar o trunfo agora.",
+      error: "Você não pode trocar o trunfo agora.",
       status: 409,
     };
   }
@@ -149,15 +149,15 @@ export function swapTrump(room: Room, seat: number): PlayResult {
 
 export function playCard(room: Room, seat: number, card: Card): PlayResult {
   if (room.phase !== "playing") {
-    return { ok: false, error: "A partida não está a decorrer.", status: 409 };
+    return { ok: false, error: "A partida não está em andamento.", status: 409 };
   }
   if (room.turn !== seat) {
-    return { ok: false, error: "Não é a tua vez.", status: 409 };
+    return { ok: false, error: "Não é a sua vez.", status: 409 };
   }
   const hand = room.hands[seat];
   const index = hand.indexOf(card);
   if (index === -1) {
-    return { ok: false, error: "Não tens essa carta.", status: 400 };
+    return { ok: false, error: "Você não tem essa carta.", status: 400 };
   }
 
   hand.splice(index, 1);
@@ -193,7 +193,7 @@ function resolveTrick(room: Room): void {
     `${nameOf(room, winnerSeat)} levou a vaza${points ? ` (+${points})` : ""}.`
   );
 
-  // Compra: o vencedor tira primeiro, depois os restantes pela ordem da mesa.
+  // Compra: o vencedor tira primeiro, depois os demais na ordem da mesa.
   if (room.deck.length > 0 || !room.trumpTaken) {
     for (let i = 0; i < room.size; i++) {
       const seat = (winnerSeat + i) % room.size;
@@ -215,12 +215,12 @@ function finish(room: Room): void {
   pushLog(
     room,
     room.winner === -1
-      ? `Empate a ${a} pontos.`
+      ? `Empate em ${a} pontos.`
       : `Fim de partida: ${a} — ${b}.`
   );
 }
 
-/** Recomeça mantendo os jogadores. Quem saiu primeiro passa ao lugar seguinte. */
+/** Recomeça com os mesmos jogadores. Quem saiu primeiro passa pro lugar seguinte. */
 export function rematch(room: Room): void {
   const first = (room.leader + 1) % room.size;
   deal(room, first);

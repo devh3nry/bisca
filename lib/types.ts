@@ -23,24 +23,24 @@ export type Room = {
   trumpSuit: Suit | null;
   trumpTaken: boolean;
 
-  table: Play[]; // vaza em curso, na ordem em que foi jogada
+  table: Play[]; // vaza atual, na ordem em que foi jogada
   leader: number; // lugar que saiu na vaza atual
   turn: number; // lugar de quem joga agora
 
-  piles: Card[][]; // cartas ganhas, por equipa
-  scores: number[]; // pontos por equipa
-  tricks: number[]; // vazas ganhas por equipa
+  piles: Card[][]; // cartas ganhas, por time
+  scores: number[]; // pontos por time
+  tricks: number[]; // vazas ganhas por time
 
   lastTrick: Play[] | null;
   lastWinner: number | null;
-  winner: number | null; // equipa vencedora, ou -1 em caso de empate
+  winner: number | null; // time vencedor, ou -1 em caso de empate
 
   version: number;
   updatedAt: number;
   log: string[];
 };
 
-/** O que cada jogador vê (sem as mãos dos adversários nem o monte). */
+/** O que cada jogador enxerga (sem as mãos dos adversários nem o monte). */
 export type PlayerView = {
   code: string;
   size: 2 | 4;

@@ -60,7 +60,7 @@ export function newDeck(): Card[] {
   return deck;
 }
 
-/** Fisher-Yates. Devolve um novo array. */
+/** Fisher-Yates. Retorna um novo array. */
 export function shuffle<T>(items: T[]): T[] {
   const out = items.slice();
   for (let i = out.length - 1; i > 0; i--) {
@@ -99,7 +99,7 @@ export function trickWinner(
   return best.seat;
 }
 
-/** Equipa de um lugar: em 4 jogadores, 0+2 contra 1+3. Em 2, cada um é a sua. */
+/** Time de um lugar: em 4 jogadores, 0+2 contra 1+3. Em 2, cada um é o seu. */
 export function teamOf(seat: number, size: number): number {
   return size === 4 ? seat % 2 : seat;
 }

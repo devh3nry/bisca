@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlayingCard } from "@/components/Card";
+import { RedisWarning } from "@/components/RedisWarning";
 import { loadName, saveName, savePlayerId } from "@/lib/session";
 
 export default function Home() {
@@ -25,12 +26,12 @@ export default function Home() {
         body: JSON.stringify({ name, size }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Falhou a criar a sala.");
+      if (!response.ok) throw new Error(data.error ?? "Não deu pra criar a mesa.");
       saveName(name);
       savePlayerId(data.code, data.playerId);
       router.push(`/sala/${data.code}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro inesperado.");
+      setError(err instanceof Error ? err.message : "Deu algum erro aqui.");
       setBusy(false);
     }
   }
@@ -38,7 +39,7 @@ export default function Home() {
   function joinRoom() {
     const clean = code.trim().toUpperCase();
     if (clean.length < 3) {
-      setError("Escreve o código da sala.");
+      setError("Digite o código da mesa.");
       return;
     }
     saveName(name);
@@ -56,21 +57,23 @@ export default function Home() {
             <PlayingCard code="KD" width={64} />
           </div>
           <h1>BISCA</h1>
-          <p>Bisca de 3 · joga com os amigos, sem registos</p>
+          <p>Bisca de 3 · jogue com os amigos, sem cadastro</p>
         </div>
+
+        <RedisWarning />
 
         {error && <p className="error">{error}</p>}
 
         <div className="panel">
-          <h2>O teu nome</h2>
+          <h2>Seu nome</h2>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="Como te chamas?"
+            placeholder="Como você se chama?"
             maxLength={16}
           />
 
-          <h2>Nova sala</h2>
+          <h2>Nova mesa</h2>
           <div className="seg">
             <button
               type="button"
@@ -93,7 +96,7 @@ export default function Home() {
         </div>
 
         <div className="panel">
-          <h2>Entrar numa sala</h2>
+          <h2>Entrar em uma mesa</h2>
           <input
             value={code}
             onChange={(event) => setCode(event.target.value.toUpperCase())}

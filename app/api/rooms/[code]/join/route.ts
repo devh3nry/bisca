@@ -18,7 +18,7 @@ export async function POST(
     const room = await getRoom(code);
     if (!room) {
       return NextResponse.json(
-        { error: "Sala não encontrada." },
+        { error: "Mesa não encontrada." },
         { status: 404 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(
     }
 
     if (room.players.length >= room.size) {
-      return NextResponse.json({ error: "A sala está cheia." }, { status: 409 });
+      return NextResponse.json({ error: "A mesa já está cheia." }, { status: 409 });
     }
 
     const taken = new Set(room.players.map((p) => p.seat));

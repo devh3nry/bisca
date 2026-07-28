@@ -1,6 +1,6 @@
 "use client";
 
-/** Guarda o id do jogador por sala, para aguentar refresh sem perder o lugar. */
+/** Guarda o id do jogador por sala, pra aguentar refresh sem perder o lugar. */
 
 const NAME_KEY = "bisca:name";
 
@@ -8,7 +8,7 @@ export function savePlayerId(code: string, playerId: string) {
   try {
     localStorage.setItem(`bisca:player:${code.toUpperCase()}`, playerId);
   } catch {
-    /* localStorage indisponível (modo privado) — segue sem persistir */
+    /* localStorage indisponível (aba anônima) — segue sem persistir */
   }
 }
 

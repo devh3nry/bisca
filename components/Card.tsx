@@ -5,7 +5,7 @@ import { rankOf, suitOf, type Card as CardCode, type Suit } from "@/lib/bisca";
 const GLYPH: Record<Suit, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const IS_RED: Record<Suit, boolean> = { S: false, H: true, D: true, C: false };
 
-// Grelha de pintas, no sistema de coordenadas do viewBox 0 0 250 350.
+// Grade de naipes, no sistema de coordenadas do viewBox 0 0 250 350.
 const COL = { L: 76, C: 125, R: 174 };
 const ROW = [78, 111, 143, 175, 207, 239, 272];
 
@@ -86,7 +86,7 @@ function CornerIndex({
   );
 }
 
-/** Figura estilizada e simétrica (como nas cartas a sério) para J / Q / K. */
+/** Figura estilizada e simétrica (como nas cartas de verdade) pra J / Q / K. */
 function Court({ rank, glyph }: { rank: string; glyph: string }) {
   return (
     <g>

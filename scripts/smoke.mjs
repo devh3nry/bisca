@@ -1,5 +1,5 @@
-// Teste de fumo contra o servidor a correr: joga uma partida inteira via HTTP.
-// Correr com: node scripts/smoke.mjs [http://localhost:3000]
+// Teste de fumaça contra o servidor rodando: joga uma partida inteira via HTTP.
+// Rodar com: node scripts/smoke.mjs [http://localhost:3000]
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
 
@@ -20,7 +20,7 @@ const created = await api("/api/rooms", {
   body: JSON.stringify({ name: "Ana", size: 2 }),
 });
 const code = created.code;
-console.log("sala criada:", code);
+console.log("mesa criada:", code);
 
 const joined = await api(`/api/rooms/${code}/join`, {
   method: "POST",
@@ -30,7 +30,7 @@ console.log("bruno entrou, fase:", joined.state.phase);
 
 const ids = [created.playerId, joined.playerId];
 
-// Reentrada tem de devolver o mesmo lugar.
+// Reentrada tem que devolver o mesmo lugar.
 const again = await api(`/api/rooms/${code}/join`, {
   method: "POST",
   body: JSON.stringify({ name: "Ana", playerId: ids[0] }),
@@ -39,17 +39,17 @@ if (again.state.you.seat !== 0) throw new Error("reentrada perdeu o lugar");
 console.log("reentrada ok");
 
 let state = await api(`/api/rooms/${code}?playerId=${ids[0]}`);
-if (state.phase !== "playing") throw new Error("partida não arrancou");
+if (state.phase !== "playing") throw new Error("partida não começou");
 if (state.hand.length !== 3) throw new Error("mão errada");
 if (state.handCounts[1] !== 3) throw new Error("contagem do adversário errada");
 
-// A vista do jogador não pode expor a mão do adversário nem o monte.
+// A visão do jogador não pode expor a mão do adversário nem o monte.
 const raw = JSON.stringify(state);
 if (raw.includes('"deck"')) throw new Error("estado expõe o monte");
 if (raw.includes('"hands"')) throw new Error("estado expõe as mãos");
 console.log("informação escondida ok");
 
-// Jogar fora da vez tem de falhar.
+// Jogar fora da vez tem que falhar.
 const outOfTurn = state.turn === 0 ? 1 : 0;
 const bad = await fetch(`${BASE}/api/rooms/${code}/play`, {
   method: "POST",
@@ -111,7 +111,7 @@ if (total !== 120) throw new Error(`pontos = ${total}`);
 console.log(
   "fim:",
   state.scores.join(" — "),
-  "| vencedor equipa",
+  "| time vencedor",
   state.winner,
   `| trocas: ${swaps}`
 );
@@ -126,6 +126,6 @@ if (restarted.phase !== "playing" || restarted.hand.length !== 3) {
 console.log("revanche ok");
 
 const missing = await fetch(`${BASE}/api/rooms/ZZZZ?playerId=x`);
-if (missing.status !== 404) throw new Error("sala inexistente devolveu 200");
+if (missing.status !== 404) throw new Error("mesa inexistente devolveu 200");
 
 console.log("\nTUDO OK");

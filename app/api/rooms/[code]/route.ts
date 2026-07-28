@@ -11,7 +11,7 @@ export async function GET(
   const { code } = await params;
   const room = await getRoom(code.toUpperCase());
   if (!room) {
-    return NextResponse.json({ error: "Sala não encontrada." }, { status: 404 });
+    return NextResponse.json({ error: "Mesa não encontrada." }, { status: 404 });
   }
 
   const playerId = new URL(request.url).searchParams.get("playerId");

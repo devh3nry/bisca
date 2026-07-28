@@ -1,15 +1,15 @@
 import { Redis } from "@upstash/redis";
 import type { Room } from "./types";
 
-const TTL_SECONDS = 60 * 60 * 6; // salas morrem 6h depois do último toque
+const TTL_SECONDS = 60 * 60 * 6; // salas expiram 6h depois da última jogada
 
 const hasUpstash =
   !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
 
 const redis = hasUpstash ? Redis.fromEnv() : null;
 
-// Fallback em memória para `next dev` sem Redis configurado. Não sobrevive a
-// mais de uma instância — em produção configura sempre o Upstash.
+// Fallback em memória pro `next dev` sem Redis configurado. Não sobrevive a
+// mais de uma instância — em produção configure sempre o Upstash.
 const memory = globalThis as unknown as {
   __biscaRooms?: Map<string, { room: Room; expiresAt: number }>;
 };
@@ -52,8 +52,8 @@ export async function roomExists(code: string): Promise<boolean> {
 }
 
 /**
- * Serializa as escritas de uma sala. Sem isto, dois jogadores a entrarem ao
- * mesmo tempo podem sobrepor-se (read-modify-write).
+ * Serializa as escritas de uma sala. Sem isso, dois jogadores entrando ao
+ * mesmo tempo podem se sobrepor (read-modify-write).
  */
 export async function withLock<T>(
   code: string,
@@ -77,7 +77,7 @@ export async function withLock<T>(
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
 
-  // Não conseguimos o lock a tempo: seguimos em frente em vez de falhar a
-  // jogada. O jogo é por turnos, por isso a colisão real é rara.
+  // Não pegamos o lock a tempo: seguimos em frente em vez de derrubar a
+  // jogada. O jogo é por turnos, então a colisão real é rara.
   return fn();
 }

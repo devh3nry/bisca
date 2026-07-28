@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Bisca",
-  description: "Bisca de 3 multijogador — cria uma sala e joga com os amigos.",
+  description: "Bisca de 3 multijogador — crie uma mesa e jogue com os amigos.",
 };
 
 export const viewport: Viewport = {
@@ -18,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt">
+    <html lang="pt-BR">
       <body>{children}</body>
     </html>
   );

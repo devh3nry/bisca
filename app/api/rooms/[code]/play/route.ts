@@ -18,7 +18,7 @@ export async function POST(
     const room = await getRoom(code);
     if (!room) {
       return NextResponse.json(
-        { error: "Sala não encontrada." },
+        { error: "Mesa não encontrada." },
         { status: 404 }
       );
     }
@@ -26,7 +26,7 @@ export async function POST(
     const player = room.players.find((p) => p.id === playerId);
     if (!player) {
       return NextResponse.json(
-        { error: "Não estás nesta sala." },
+        { error: "Você não está nesta mesa." },
         { status: 403 }
       );
     }

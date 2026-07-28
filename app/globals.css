@@ -239,27 +239,184 @@ input:focus {
   font-size: 14px;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Botão redondo discreto — o "Sair" de antes era um link solto e feio. */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 195, 122, 0.35);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  flex: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--gold);
+  color: #24170a;
+  transform: translateY(-1px);
+}
+
 .code-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   letter-spacing: 4px;
   font-size: 20px;
   color: var(--gold);
   background: rgba(0, 0, 0, 0.3);
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: 4px 14px;
+  border-radius: 10px;
   border: 1px solid rgba(232, 195, 122, 0.3);
 }
 
-.score {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  font-size: 17px;
+.code-chip small {
+  font-size: 9px;
+  letter-spacing: 2px;
+  opacity: 0.6;
 }
 
-.score b {
+.code-inline {
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 4px;
   color: var(--gold);
-  font-size: 22px;
+}
+
+/* ---------- placar do jogo (pontos) ---------- */
+
+.match {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.match-x {
+  opacity: 0.35;
+  align-self: center;
+  margin-top: 8px;
+}
+
+.match-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.match-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.match-side.mine .match-label {
+  color: var(--gold);
+  opacity: 1;
+}
+
+.match-pips {
+  display: flex;
+  gap: 4px;
+}
+
+.match-pips i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.match-pips i.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(232, 195, 122, 0.5);
+}
+
+/* ---------- barra dos 120 pontos da mão ---------- */
+
+.handscore {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  font-size: 14px;
+}
+
+.handscore-side {
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.handscore-side.right {
+  text-align: right;
+}
+
+.handscore-side b {
+  color: var(--ink);
+  font-size: 19px;
+  margin-inline: 3px;
+}
+
+.handscore-bar {
+  position: relative;
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+}
+
+.handscore-bar .fill {
+  height: 100%;
+  transition: width 0.35s ease;
+}
+
+.handscore-bar .fill.us {
+  background: linear-gradient(90deg, #e8c37a, #f0d69f);
+}
+
+.handscore-bar .fill.them {
+  background: linear-gradient(90deg, #7a90a8, #9fb2c6);
+}
+
+/* A marca dos 61: 61/120 da barra. */
+.handscore-bar .mark {
+  position: absolute;
+  left: 50.8%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.handscore-bar .mark span {
+  position: absolute;
+  top: -3px;
+  left: 5px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.handscore-bar .mark.hit {
+  background: #fff;
+  box-shadow: 0 0 8px #fff;
 }
 
 /* Trunfo em destaque: o naipe tem que dar pra ler sem chegar perto da tela. */
@@ -513,15 +670,176 @@ input:focus {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.72);
   padding: 20px;
   z-index: 10;
+  backdrop-filter: blur(3px);
 }
 
+/* Opaco de propósito: translúcido, a mesa aparecia atrás do texto. */
 .overlay .panel {
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
   text-align: center;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #0b3a25;
+  border-color: rgba(232, 195, 122, 0.5);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- carta travada (ás de trunfo preso) ---------- */
+
+.hand button.blocked .card-svg {
+  filter: grayscale(0.75) brightness(0.62);
+}
+
+.hand button.blocked {
+  position: relative;
+  cursor: help;
+}
+
+.hand button.blocked:not(:disabled):hover {
+  transform: none;
+}
+
+.hand button .lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  pointer-events: none;
+}
+
+.table-empty {
+  opacity: 0.45;
+  font-size: 15px;
+}
+
+/* ---------- prêmios do fim da mão ---------- */
+
+.awards {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.awards li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border-left: 3px solid transparent;
+}
+
+.awards li.ours {
+  border-left-color: var(--gold);
+}
+
+.awards li.theirs {
+  opacity: 0.62;
+}
+
+.awards li b {
+  margin-left: auto;
+  color: var(--gold);
+}
+
+.match-final {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+}
+
+.match-final b {
+  color: var(--gold);
+  font-size: 24px;
+  margin-left: 6px;
+}
+
+.result .big-score small {
+  opacity: 0.4;
+  font-size: 24px;
+  margin-inline: 6px;
+}
+
+.muted-note {
+  font-size: 12px;
+  opacity: 0.6;
+  margin: 4px 0 0;
+}
+
+/* ---------- folha de regras ---------- */
+
+.rules {
+  text-align: left;
+  max-width: 520px;
+}
+
+.rules h3 {
+  color: var(--gold);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin: 20px 0 8px;
+}
+
+.rules p,
+.rules li {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 6px 0;
+}
+
+.rules ul {
+  padding-left: 18px;
+  margin: 6px 0;
+}
+
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.rules-table td {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rules-table td:last-child {
+  text-align: right;
+  color: var(--gold);
+}
+
+.strength {
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-weight: 600;
+}
+
+.strength span {
+  opacity: 0.4;
+  margin-inline: 3px;
+}
+
+.rules .btn {
+  margin-top: 20px;
 }
 
 .overlay h2 {
@@ -543,16 +861,28 @@ input:focus {
   min-height: 18px;
 }
 
-/* Notebook baixinho: encolhe as cartas o suficiente pra mesa caber sem rolagem. */
+/* Notebook baixinho: encolhe tudo o suficiente pra mesa caber sem rolagem. */
 @media (max-height: 720px) {
   .table .hand .card-svg {
-    width: max(84px, min(11.5vw, 16.5vh, 168px));
+    width: max(84px, min(11.5vw, 15vh, 168px));
   }
   .table .trick .card-svg {
-    width: max(76px, min(10.5vw, 13vh, 152px));
+    width: max(76px, min(10.5vw, 12vh, 152px));
   }
   .table .stock .card-svg {
     width: max(54px, min(7vw, 9.5vh, 104px));
+  }
+  .handscore {
+    font-size: 12px;
+  }
+  .handscore-side b {
+    font-size: 16px;
+  }
+  .handscore-bar {
+    height: 9px;
+  }
+  .trump-badge-glyph {
+    font-size: 30px;
   }
 }
 

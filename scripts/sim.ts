@@ -2,6 +2,7 @@
 // Rodar com: npx tsx scripts/sim.ts
 
 import {
+  blockedCards,
   canSwapTrump,
   createRoom,
   deal,
@@ -42,7 +43,14 @@ function simulate(size: 2 | 4, games: number) {
         swapsDone++;
       }
 
-      const card = hand[Math.floor(Math.random() * hand.length)];
+      // Respeita as cartas travadas (ás de trunfo sem o 7 ter saído).
+      const bloqueadas = blockedCards(room, seat);
+      const jogaveis = hand.filter((c) => !bloqueadas[c]);
+      if (jogaveis.length === 0) {
+        throw new Error(`Lugar ${seat} ficou sem carta jogável`);
+      }
+
+      const card = jogaveis[Math.floor(Math.random() * jogaveis.length)];
       const result = playCard(room, seat, card);
       if (!result.ok) throw new Error(result.error);
       if (++moves > 200) throw new Error("Partida não termina");
@@ -60,6 +68,23 @@ function simulate(size: 2 | 4, games: number) {
     if (tricks !== 40 / size) throw new Error(`${tricks} vazas`);
 
     if (sumPoints(newDeck()) !== 120) throw new Error("Baralho não vale 120");
+
+    // O placar do jogo só pode crescer, e cada prêmio tem que estar refletido.
+    const somaPremios = room.awards.reduce((t, a) => t + a.points, 0);
+    if (somaPremios !== room.matchPoints[0] + room.matchPoints[1]) {
+      throw new Error("prêmios não batem com o placar do jogo");
+    }
+    // Num empate ninguém ganha a mão nem leva capote — mas sete volteada e
+    // rela já foram pagas durante o jogo e continuam valendo.
+    if (
+      room.winner === -1 &&
+      room.awards.some((a) => a.kind === "vitoria" || a.kind === "capote")
+    ) {
+      throw new Error("empate não pode render vitória nem capote");
+    }
+    if (room.awards.some((a) => a.kind !== "vitoria" && a.kind !== "capote")) {
+      if (size !== 4) throw new Error("volteada/rela fora do 2v2");
+    }
 
     // A revanche tem que deixar o estado jogável de novo.
     rematch(room);

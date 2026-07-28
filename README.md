@@ -6,9 +6,28 @@ código de 4 letras e jogue.
 - **1 vs 1** ou **2 vs 2** (em duplas, o parceiro fica à frente)
 - Baralho de 40 cartas (sem 8, 9 e 10), trunfo virado, compra do monte
 - Pontos: Ás 11 · 7 → 10 · Rei 4 · Dama 3 · Valete 2 (120 no total, ganha quem passar dos 60)
-- **Troca do 2**: quem tiver o 2 do naipe de trunfo pode trocar pela carta virada.
-  Vale a qualquer momento da partida (não só na primeira rodada), na sua vez e
-  antes de jogar, enquanto o trunfo não tiver sido comprado.
+
+## Regras da casa
+
+- **Troca do 2** — quem tiver o 2 do naipe de trunfo pode trocar pela carta
+  virada. Vale a qualquer momento da partida (não só na primeira rodada), na sua
+  vez e antes de jogar, enquanto o trunfo não tiver sido comprado.
+- **Ás preso** — não dá pra *puxar* (sair na vaza) com o ás de trunfo enquanto o
+  7 de trunfo não tiver saído. Respondendo a outra carta o ás é livre, e se for a
+  única carta na mão também — senão o jogador travava sem ter o que jogar.
+
+### Placar do jogo (até 4 pontos)
+
+| O quê | Quando | Vale |
+| --- | --- | --- |
+| Vitória | fez 61+ na mão | 1 |
+| Capote | adversário ficou com 30 ou menos | 1 extra |
+| Sete volteada | puxou com um 7 e ele ganhou a vaza dando a volta | 1 |
+| Rela | matou com o ás o 7 de um adversário | 1 |
+
+Capote vale nas duas modalidades. Sete volteada e rela só no 2v2. Empate na mão
+(60–60) não dá vitória nem capote, mas volteada e rela já pagas continuam
+valendo.
 - Estado compartilhado no Redis, cliente sincroniza por polling adaptativo
 
 ## Consumo do Redis
@@ -56,15 +75,18 @@ ou jogue todo mundo pela mesma URL.
 | `lib/store.ts` | persistência no Upstash + lock por sala |
 | `app/api/rooms/**` | criar sala, entrar, ver estado, jogar, revanche |
 | `components/Card.tsx` | cartas desenhadas em SVG (baralho inglês clássico) |
+| `components/Court.tsx` | figuras J/Q/K, meia-figura espelhada em quatro cores |
+| `components/Rules.tsx` | folha de regras aberta pelo `?` da mesa |
 | `app/sala/[code]` | a mesa |
 | `app/cartas` | página de referência com o baralho todo |
 
 ## Testes
 
 ```bash
-npx tsx scripts/sim.ts   # 1000 partidas simuladas, verifica os invariantes
-npm run dev              # em outro terminal
-node scripts/smoke.mjs   # joga uma partida inteira pela API
+npx tsx scripts/regras.ts  # regras da casa, caso a caso
+npx tsx scripts/sim.ts     # 1000 partidas simuladas, verifica os invariantes
+npm run dev                # em outro terminal
+node scripts/smoke.mjs     # joga uma partida inteira pela API
 ```
 
 As mesas expiram 6 horas depois da última jogada.

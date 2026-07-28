@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CardBack, PlayingCard } from "@/components/Card";
+import { Rules } from "@/components/Rules";
 import type { PlayerView } from "@/lib/types";
-import { loadName, loadPlayerId, savePlayerId } from "@/lib/session";
+import { loadName, loadPlayerId, saveName, savePlayerId } from "@/lib/session";
 
 // Cada sondagem é um comando no Redis e o plano free do Upstash dá 500K/mês.
 // Por isso: ritmo rápido só quando há mesmo uma jogada para aparecer, mais
@@ -35,18 +36,12 @@ const SUIT_GLYPHS: Record<string, string> = {
 
 const RED_SUITS = new Set(["H", "D"]);
 
-/** Naipe do trunfo em destaque no topo — dá pra ler sem chegar perto da tela. */
-function TrumpBadge({ suit }: { suit: string }) {
-  return (
-    <div className={`trump-badge ${RED_SUITS.has(suit) ? "red" : "black"}`}>
-      <span className="trump-badge-glyph">{SUIT_GLYPHS[suit]}</span>
-      <span className="trump-badge-text">
-        <small>TRUNFO</small>
-        {SUIT_NAMES[suit]}
-      </span>
-    </div>
-  );
-}
+const AWARD_ICONS: Record<string, string> = {
+  vitoria: "🏆",
+  capote: "🧨",
+  "sete-volteada": "🔁",
+  rela: "⚡",
+};
 
 export default function RoomClient({ code }: { code: string }) {
   const [playerId, setPlayerId] = useState<string | null>(null);
@@ -55,12 +50,21 @@ export default function RoomClient({ code }: { code: string }) {
   const [notice, setNotice] = useState("");
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [name, setName] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState("");
   const idRef = useRef<string | null>(null);
   const stateRef = useRef<PlayerView | null>(null);
   stateRef.current = state;
 
-  // Entra (ou volta a entrar) na mesa.
+  // Ninguém entra sem nome: sem isso a mesa vira "Jogador" contra "Jogador".
   useEffect(() => {
+    const saved = loadName().trim();
+    if (saved) setName(saved);
+    setDraftName(saved);
+  }, []);
+
+  useEffect(() => {
+    if (!name) return;
     let cancelled = false;
 
     (async () => {
@@ -69,7 +73,7 @@ export default function RoomClient({ code }: { code: string }) {
         const response = await fetch(`/api/rooms/${code}/join`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: loadName(), playerId: known }),
+          body: JSON.stringify({ name, playerId: known }),
         });
         const data = await response.json();
         if (cancelled) return;
@@ -89,7 +93,7 @@ export default function RoomClient({ code }: { code: string }) {
     return () => {
       cancelled = true;
     };
-  }, [code]);
+  }, [code, name]);
 
   const refresh = useCallback(async () => {
     const id = idRef.current;
@@ -143,65 +147,24 @@ export default function RoomClient({ code }: { code: string }) {
     };
   }, [playerId, refresh]);
 
-  async function play(card: string) {
-    if (!playerId || sending) return;
+  async function post(path: string, body: Record<string, unknown>) {
     setSending(true);
     setNotice("");
     try {
-      const response = await fetch(`/api/rooms/${code}/play`, {
+      const response = await fetch(`/api/rooms/${code}/${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ playerId, card }),
+        body: JSON.stringify({ playerId, ...body }),
       });
       const data = await response.json();
       if (!response.ok) {
-        setNotice(data.error ?? "Jogada inválida.");
+        setNotice(data.error ?? "Não rolou.");
         if (data.state) setState(data.state);
       } else {
         setState(data);
       }
     } catch {
       setNotice("Sem conexão — tente de novo.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function swapTrump() {
-    if (!playerId || sending) return;
-    setSending(true);
-    setNotice("");
-    try {
-      const response = await fetch(`/api/rooms/${code}/swap`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ playerId }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setNotice(data.error ?? "Não deu pra trocar.");
-        if (data.state) setState(data.state);
-      } else {
-        setState(data);
-      }
-    } catch {
-      setNotice("Sem conexão — tente de novo.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function rematch() {
-    if (!playerId) return;
-    setSending(true);
-    try {
-      const response = await fetch(`/api/rooms/${code}/rematch`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ playerId }),
-      });
-      const data = await response.json();
-      if (response.ok) setState(data);
     } finally {
       setSending(false);
     }
@@ -215,6 +178,49 @@ export default function RoomClient({ code }: { code: string }) {
         setTimeout(() => setCopied(false), 1800);
       })
       .catch(() => setNotice("Copie o endereço da barra do navegador."));
+  }
+
+  // ---------- portão do nome ----------
+
+  if (!name) {
+    return (
+      <main className="home">
+        <div className="home-inner">
+          <div className="brand">
+            <h1>BISCA</h1>
+            <p>
+              Você foi convidado pra mesa <b className="code-inline">{code}</b>
+            </p>
+          </div>
+          <div className="panel">
+            <h2>Como você quer aparecer na mesa?</h2>
+            <input
+              autoFocus
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && draftName.trim()) {
+                  saveName(draftName.trim());
+                  setName(draftName.trim());
+                }
+              }}
+              placeholder="Seu nome ou apelido"
+              maxLength={16}
+            />
+            <button
+              className="btn"
+              disabled={!draftName.trim()}
+              onClick={() => {
+                saveName(draftName.trim());
+                setName(draftName.trim());
+              }}
+            >
+              Entrar na mesa
+            </button>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (error) {
@@ -239,6 +245,8 @@ export default function RoomClient({ code }: { code: string }) {
     );
   }
 
+  const myTeam = state.you?.team ?? 0;
+  const theirTeam = 1 - myTeam;
   const mySeat = state.you?.seat ?? 0;
   const size = state.size;
   const seatAt = (offset: number) => (mySeat + offset) % size;
@@ -250,31 +258,67 @@ export default function RoomClient({ code }: { code: string }) {
   const waiting = state.phase === "lobby";
   const trick = state.table.length > 0 ? state.table : state.lastTrick ?? [];
   const showingPast = state.table.length === 0 && !!state.lastTrick;
+  const usLabel = size === 4 ? "Nossa dupla" : "Você";
+  const themLabel = size === 4 ? "Eles" : "Adversário";
 
   return (
     <main className="table">
-      <div className="topbar">
-        <Link href="/" style={{ color: "var(--gold)", textDecoration: "none" }}>
-          ← Sair
-        </Link>
-        <button
-          className="code-chip"
-          onClick={copyLink}
-          title="Copiar o link da mesa"
-          style={{ border: "1px solid rgba(232,195,122,.3)" }}
-        >
-          {copied ? "COPIADO" : code}
-        </button>
-        {state.trumpSuit && <TrumpBadge suit={state.trumpSuit} />}
-        <div className="score">
-          <span>
-            Nós <b>{state.scores[state.you?.team ?? 0]}</b>
-          </span>
-          <span>
-            Eles <b>{state.scores[1 - (state.you?.team ?? 0)]}</b>
-          </span>
+      <header className="topbar">
+        <div className="topbar-left">
+          <Link href="/" className="icon-btn" title="Sair da mesa">
+            ←
+          </Link>
+          <Rules compact />
+          <button
+            className="code-chip"
+            onClick={copyLink}
+            title="Copiar o link da mesa"
+          >
+            <small>MESA</small>
+            {copied ? "COPIADO!" : code}
+          </button>
         </div>
-      </div>
+
+        {state.trumpSuit && (
+          <div
+            className={`trump-badge ${
+              RED_SUITS.has(state.trumpSuit) ? "red" : "black"
+            }`}
+          >
+            <span className="trump-badge-glyph">
+              {SUIT_GLYPHS[state.trumpSuit]}
+            </span>
+            <span className="trump-badge-text">
+              <small>TRUNFO</small>
+              {SUIT_NAMES[state.trumpSuit]}
+            </span>
+          </div>
+        )}
+
+        <div className="match">
+          <MatchSide
+            label={usLabel}
+            points={state.matchPoints[myTeam]}
+            target={state.matchTarget}
+            mine
+          />
+          <span className="match-x">×</span>
+          <MatchSide
+            label={themLabel}
+            points={state.matchPoints[theirTeam]}
+            target={state.matchTarget}
+          />
+        </div>
+      </header>
+
+      {!waiting && (
+        <HandScore
+          us={state.scores[myTeam]}
+          them={state.scores[theirTeam]}
+          usLabel={usLabel}
+          themLabel={themLabel}
+        />
+      )}
 
       <div className="arena">
         <div className="seat-top">
@@ -305,8 +349,8 @@ export default function RoomClient({ code }: { code: string }) {
               </div>
             ))}
             {trick.length === 0 && (
-              <span style={{ opacity: 0.5 }}>
-                {waiting ? "Esperando jogadores…" : "Mesa vazia"}
+              <span className="table-empty">
+                {waiting ? "Esperando jogadores…" : "Ninguém jogou ainda"}
               </span>
             )}
           </div>
@@ -319,11 +363,13 @@ export default function RoomClient({ code }: { code: string }) {
                   <PlayingCard code={state.trump} width={62} />
                 </div>
               )}
-              <span className="stock-count">{state.deckCount} no monte</span>
+              <span className="stock-count">
+                {state.deckCount} no monte
+              </span>
               {state.canSwapTrump && (
                 <button
                   className="swap"
-                  onClick={swapTrump}
+                  onClick={() => post("swap", {})}
                   disabled={sending}
                   title="Trocar o seu 2 de trunfo pela carta virada"
                 >
@@ -338,24 +384,32 @@ export default function RoomClient({ code }: { code: string }) {
           <p className={`hint ${state.yourTurn ? "" : "muted"}`}>
             {notice ||
               (waiting
-                ? `Falta ${size - state.players.length} jogador(es) — passe o código ${code}`
+                ? `Falta ${size - state.players.length} jogador(es) — mande o link ou o código ${code}`
                 : state.phase === "done"
-                  ? "Partida terminada"
+                  ? "Mão terminada"
                   : state.yourTurn
                     ? "É a sua vez — escolha uma carta"
                     : `Vez de ${nameOf(state, state.turn)}`)}
           </p>
           <div className="hand">
-            {state.hand.map((card) => (
-              <button
-                key={card}
-                onClick={() => play(card)}
-                disabled={!state.yourTurn || sending}
-                aria-label={`Jogar ${card}`}
-              >
-                <PlayingCard code={card} width={104} />
-              </button>
-            ))}
+            {state.hand.map((card) => {
+              const blocked = state.blocked[card];
+              return (
+                <button
+                  key={card}
+                  className={blocked ? "blocked" : ""}
+                  onClick={() =>
+                    blocked ? setNotice(blocked) : post("play", { card })
+                  }
+                  disabled={!state.yourTurn || sending}
+                  title={blocked ?? undefined}
+                  aria-label={`Jogar ${card}`}
+                >
+                  <PlayingCard code={card} width={104} />
+                  {blocked && <span className="lock">🔒</span>}
+                </button>
+              );
+            })}
             {state.hand.length === 0 && waiting && (
               <>
                 <CardBack width={104} />
@@ -370,25 +424,112 @@ export default function RoomClient({ code }: { code: string }) {
 
       {state.phase === "done" && (
         <div className="overlay">
-          <div className="panel">
+          <div className="panel result">
             <h2>
-              {state.winner === -1
-                ? "Empate!"
-                : state.winner === state.you?.team
-                  ? "Você ganhou! 🎉"
-                  : "Você perdeu…"}
+              {state.matchWinner !== null
+                ? state.matchWinner === myTeam
+                  ? "🏆 Vocês ganharam o jogo!"
+                  : "Fim de jogo — eles levaram"
+                : state.winner === -1
+                  ? "Mão empatada"
+                  : state.winner === myTeam
+                    ? "Mão ganha!"
+                    : "Mão perdida"}
             </h2>
+
             <p className="big-score">
-              {state.scores[state.you?.team ?? 0]} —{" "}
-              {state.scores[1 - (state.you?.team ?? 0)]}
+              {state.scores[myTeam]} <small>×</small> {state.scores[theirTeam]}
             </p>
-            <button className="btn" onClick={rematch} disabled={sending}>
-              Nova partida
+            <p className="muted-note">pontos das cartas nesta mão</p>
+
+            {state.awards.length > 0 && (
+              <ul className="awards">
+                {state.awards.map((a, i) => (
+                  <li key={i} className={a.team === myTeam ? "ours" : "theirs"}>
+                    <span>{AWARD_ICONS[a.kind] ?? "•"}</span>
+                    {a.text}
+                    <b>+{a.points}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="match-final">
+              <span>
+                {usLabel} <b>{state.matchPoints[myTeam]}</b>
+              </span>
+              <span className="muted-note">jogo até {state.matchTarget}</span>
+              <span>
+                {themLabel} <b>{state.matchPoints[theirTeam]}</b>
+              </span>
+            </div>
+
+            <button
+              className="btn"
+              onClick={() => post("rematch", {})}
+              disabled={sending}
+            >
+              {state.matchWinner !== null ? "Jogar de novo" : "Próxima mão"}
             </button>
           </div>
         </div>
       )}
     </main>
+  );
+}
+
+function MatchSide({
+  label,
+  points,
+  target,
+  mine = false,
+}: {
+  label: string;
+  points: number;
+  target: number;
+  mine?: boolean;
+}) {
+  return (
+    <div className={`match-side ${mine ? "mine" : ""}`}>
+      <span className="match-label">{label}</span>
+      <span className="match-pips" aria-label={`${points} de ${target} pontos`}>
+        {Array.from({ length: target }).map((_, i) => (
+          <i key={i} className={i < points ? "on" : ""} />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+/** Barra dos 120 pontos das cartas, com a marca dos 61 que decide a mão. */
+function HandScore({
+  us,
+  them,
+  usLabel,
+  themLabel,
+}: {
+  us: number;
+  them: number;
+  usLabel: string;
+  themLabel: string;
+}) {
+  const decided = Math.max(us, them) >= 61;
+  return (
+    <div className="handscore">
+      <span className="handscore-side">
+        {usLabel} <b>{us}</b>
+      </span>
+      <div className="handscore-bar" title="120 pontos no baralho, ganha com 61">
+        <div className="fill us" style={{ width: `${(us / 120) * 100}%` }} />
+        <div className="fill them" style={{ width: `${(them / 120) * 100}%` }} />
+        <div className={`mark ${decided ? "hit" : ""}`}>
+          <span>61</span>
+        </div>
+      </div>
+      <span className="handscore-side right">
+        <b>{them}</b> {themLabel}
+      </span>
+    </div>
   );
 }
 

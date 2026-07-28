@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlayingCard } from "@/components/Card";
 import { RedisWarning } from "@/components/RedisWarning";
+import { Rules } from "@/components/Rules";
 import { loadName, saveName, savePlayerId } from "@/lib/session";
 
 export default function Home() {
@@ -17,6 +18,10 @@ export default function Home() {
   useEffect(() => setName(loadName()), []);
 
   async function createRoom() {
+    if (!name.trim()) {
+      setError("Escreva seu nome primeiro — é como os outros vão te ver.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -38,6 +43,10 @@ export default function Home() {
 
   function joinRoom() {
     const clean = code.trim().toUpperCase();
+    if (!name.trim()) {
+      setError("Escreva seu nome primeiro — é como os outros vão te ver.");
+      return;
+    }
     if (clean.length < 3) {
       setError("Digite o código da mesa.");
       return;
@@ -90,6 +99,11 @@ export default function Home() {
               2 vs 2
             </button>
           </div>
+          <p className="muted-note" style={{ marginBottom: 14 }}>
+            {size === 2
+              ? "Um contra um. Você cria e manda o link pro seu adversário."
+              : "Duas duplas. Seu parceiro senta na sua frente — quem entra em 2º e 4º forma o outro time."}
+          </p>
           <button className="btn" onClick={createRoom} disabled={busy}>
             Criar mesa
           </button>
@@ -108,6 +122,15 @@ export default function Home() {
           <button className="btn ghost" onClick={joinRoom} disabled={busy}>
             Entrar
           </button>
+        </div>
+
+        <div className="panel">
+          <h2>Primeira vez?</h2>
+          <p className="muted-note" style={{ marginBottom: 14 }}>
+            Regras, quanto vale cada carta e as regras da casa (troca do 2, ás
+            preso, capote, sete volteada e rela).
+          </p>
+          <Rules />
         </div>
       </div>
     </main>

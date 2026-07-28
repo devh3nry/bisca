@@ -1,14 +1,17 @@
 "use client";
 
 import { rankOf, suitOf, type Card as CardCode, type Suit } from "@/lib/bisca";
+import { Court } from "./Court";
 
 const GLYPH: Record<Suit, string> = { S: "♠", H: "♥", D: "♦", C: "♣" };
 const IS_RED: Record<Suit, boolean> = { S: false, H: true, D: true, C: false };
 
 // Grade de naipes, no sistema de coordenadas do viewBox 0 0 250 350.
 // Recuada dos cantos porque o índice de canto é grande, pra dar pra ler de longe.
-const COL = { L: 88, C: 125, R: 162 };
-const ROW = [88, 118, 147, 175, 203, 232, 262];
+// As fileiras começam bem abaixo do índice de canto: quando o naipe do índice
+// ficava na mesma altura da primeira fileira, um 4 parecia ter 3 pintas em cima.
+const COL = { L: 90, C: 125, R: 160 };
+const ROW = [100, 126, 151, 175, 199, 224, 250];
 
 type Pip = { x: number; y: number; scale?: number };
 
@@ -47,7 +50,7 @@ const LAYOUTS: Record<string, Pip[]> = {
   "7": [
     { x: COL.L, y: ROW[0] },
     { x: COL.R, y: ROW[0] },
-    { x: COL.C, y: 131 },
+    { x: COL.C, y: 137 },
     { x: COL.L, y: ROW[3] },
     { x: COL.R, y: ROW[3] },
     { x: COL.L, y: ROW[6] },
@@ -72,7 +75,7 @@ function CornerIndex({
     >
       <text
         x={34}
-        y={62}
+        y={58}
         textAnchor="middle"
         fontSize={56}
         fontWeight={700}
@@ -80,81 +83,9 @@ function CornerIndex({
       >
         {rank}
       </text>
-      <text x={34} y={108} textAnchor="middle" fontSize={44}>
+      <text x={34} y={99} textAnchor="middle" fontSize={42}>
         {glyph}
       </text>
-    </g>
-  );
-}
-
-/** Figura estilizada e simétrica (como nas cartas de verdade) pra J / Q / K. */
-function Court({ rank, glyph }: { rank: string; glyph: string }) {
-  return (
-    <g>
-      <rect
-        x={58}
-        y={56}
-        width={134}
-        height={238}
-        rx={5}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={3}
-      />
-      <rect
-        x={64}
-        y={62}
-        width={122}
-        height={226}
-        rx={3}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.2}
-        opacity={0.55}
-      />
-
-      {[false, true].map((flipped) => (
-        <g
-          key={String(flipped)}
-          transform={flipped ? "rotate(180 125 175)" : undefined}
-        >
-          {/* coroa */}
-          <path
-            d="M92 106 L92 84 L106 95 L125 70 L144 95 L158 84 L158 106 Z"
-            fill="currentColor"
-          />
-          <circle cx={92} cy={80} r={5} fill="currentColor" />
-          <circle cx={125} cy={64} r={6} fill="currentColor" />
-          <circle cx={158} cy={80} r={5} fill="currentColor" />
-          <rect
-            x={90}
-            y={110}
-            width={70}
-            height={7}
-            rx={3}
-            fill="currentColor"
-          />
-
-          {/* inicial */}
-          <text
-            x={125}
-            y={148}
-            textAnchor="middle"
-            fontSize={44}
-            fontWeight={700}
-            fontFamily="Georgia, 'Times New Roman', serif"
-          >
-            {rank}
-          </text>
-
-          <text x={125} y={172} textAnchor="middle" fontSize={22}>
-            {glyph}
-          </text>
-
-          {/* faixa central */}
-          <rect x={64} y={172} width={122} height={3} fill="currentColor" />
-        </g>
-      ))}
     </g>
   );
 }

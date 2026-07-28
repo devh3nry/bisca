@@ -1,5 +1,6 @@
 import {
   newDeck,
+  rankOf,
   shuffle,
   sumPoints,
   suitOf,
@@ -7,7 +8,8 @@ import {
   trickWinner,
   type Card,
 } from "./bisca";
-import type { Play, PlayerView, Room } from "./types";
+import type { Award, Play, PlayerView, Room } from "./types";
+import { MATCH_TARGET } from "./types";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem I/O/0/1
 
@@ -45,6 +47,10 @@ export function createRoom(code: string, size: 2 | 4, hostId: string): Room {
     lastTrick: null,
     lastWinner: null,
     winner: null,
+    sevenTrumpPlayed: false,
+    matchPoints: Array(teams).fill(0),
+    matchWinner: null,
+    awards: [],
     version: 1,
     updatedAt: Date.now(),
     log: [],
@@ -81,6 +87,8 @@ export function deal(room: Room, firstSeat = 0): void {
   room.lastTrick = null;
   room.lastWinner = null;
   room.winner = null;
+  room.sevenTrumpPlayed = false;
+  room.awards = [];
   room.phase = "playing";
   room.log = [];
   pushLog(room, `Partida iniciada — trunfo de ${suitName(room.trumpSuit)}.`);
@@ -147,6 +155,27 @@ export function swapTrump(room: Room, seat: number): PlayResult {
   return { ok: true };
 }
 
+export const BLOCK_ACE_REASON =
+  "Não dá pra puxar com o ás de trunfo antes do 7 de trunfo sair.";
+
+/**
+ * Cartas que o jogador não pode jogar agora, com o motivo. Hoje só existe uma
+ * proibição: puxar (sair na vaza) com o ás de trunfo antes do 7 de trunfo ter
+ * aparecido. Respondendo a outra carta o ás é livre — e se for a única carta
+ * na mão também, senão o jogador travava sem ter o que jogar.
+ */
+export function blockedCards(room: Room, seat: number): Record<string, string> {
+  if (room.phase !== "playing" || room.turn !== seat) return {};
+  if (room.table.length > 0) return {}; // não está puxando
+  if (room.sevenTrumpPlayed || !room.trumpSuit) return {};
+
+  const hand = room.hands[seat];
+  if (hand.length <= 1) return {};
+
+  const ace = `A${room.trumpSuit}`;
+  return hand.includes(ace) ? { [ace]: BLOCK_ACE_REASON } : {};
+}
+
 export function playCard(room: Room, seat: number, card: Card): PlayResult {
   if (room.phase !== "playing") {
     return { ok: false, error: "A partida não está em andamento.", status: 409 };
@@ -160,8 +189,14 @@ export function playCard(room: Room, seat: number, card: Card): PlayResult {
     return { ok: false, error: "Você não tem essa carta.", status: 400 };
   }
 
+  const blockReason = blockedCards(room, seat)[card];
+  if (blockReason) {
+    return { ok: false, error: blockReason, status: 409 };
+  }
+
   hand.splice(index, 1);
   room.table.push({ seat, card });
+  if (card === `7${room.trumpSuit}`) room.sevenTrumpPlayed = true;
 
   if (room.table.length < room.size) {
     room.turn = (room.turn + 1) % room.size;
@@ -193,6 +228,36 @@ function resolveTrick(room: Room): void {
     `${nameOf(room, winnerSeat)} levou a vaza${points ? ` (+${points})` : ""}.`
   );
 
+  // Sete volteada e rela só existem em dupla, e valem ponto na hora.
+  if (room.size === 4) {
+    const lead = plays[0];
+    if (rankOf(lead.card) === "7" && winnerSeat === lead.seat) {
+      award(room, {
+        kind: "sete-volteada",
+        team: winnerTeam,
+        points: 1,
+        text: `${nameOf(room, lead.seat)} volteou o ${lead.card[0]}`,
+      });
+    }
+
+    const winningPlay = plays.find((p) => p.seat === winnerSeat)!;
+    const releou =
+      rankOf(winningPlay.card) === "A" &&
+      plays.some(
+        (p) =>
+          rankOf(p.card) === "7" &&
+          teamOf(p.seat, room.size) !== winnerTeam
+      );
+    if (releou) {
+      award(room, {
+        kind: "rela",
+        team: winnerTeam,
+        points: 1,
+        text: `${nameOf(room, winnerSeat)} deu rela (ás em cima do 7)`,
+      });
+    }
+  }
+
   // Compra: o vencedor tira primeiro, depois os demais na ordem da mesa.
   if (room.deck.length > 0 || !room.trumpTaken) {
     for (let i = 0; i < room.size; i++) {
@@ -208,20 +273,61 @@ function resolveTrick(room: Room): void {
   if (room.hands.every((hand) => hand.length === 0)) finish(room);
 }
 
+/** Credita um ponto de jogo e registra pra mostrar na tela. */
+function award(room: Room, entry: Award): void {
+  room.matchPoints[entry.team] += entry.points;
+  room.awards.push(entry);
+  pushLog(room, `${entry.text} — ponto pro time.`);
+}
+
+const CAPOTE_LIMIT = 30; // fazer 30 ou menos é levar capote
+
 function finish(room: Room): void {
   room.phase = "done";
   const [a, b] = room.scores;
   room.winner = a === b ? -1 : a > b ? 0 : 1;
-  pushLog(
-    room,
-    room.winner === -1
-      ? `Empate em ${a} pontos.`
-      : `Fim de partida: ${a} — ${b}.`
-  );
+
+  if (room.winner !== -1) {
+    const loser = 1 - room.winner;
+    const teamLabel = room.size === 4 ? "a dupla" : "";
+
+    award(room, {
+      kind: "vitoria",
+      team: room.winner,
+      points: 1,
+      text: `Mão ganha por ${room.scores[room.winner]} a ${room.scores[loser]}`,
+    });
+
+    // Capote vale nas duas modalidades.
+    if (room.scores[loser] <= CAPOTE_LIMIT) {
+      award(room, {
+        kind: "capote",
+        team: room.winner,
+        points: 1,
+        text: `Capote! ${teamLabel} adversária ficou em ${room.scores[loser]}`.trim(),
+      });
+    }
+  } else {
+    pushLog(room, `Empate em ${a} pontos — ninguém pontua.`);
+  }
+
+  const best = Math.max(...room.matchPoints);
+  if (best >= MATCH_TARGET) {
+    room.matchWinner = room.matchPoints.indexOf(best);
+    pushLog(room, `Fim de jogo: ${room.matchPoints.join(" — ")}.`);
+  }
 }
 
-/** Recomeça com os mesmos jogadores. Quem saiu primeiro passa pro lugar seguinte. */
+/**
+ * Próxima mão com os mesmos jogadores; quem saiu primeiro passa pro lugar
+ * seguinte. Se o jogo já acabou (alguém chegou aos pontos), zera o placar e
+ * começa um jogo novo.
+ */
 export function rematch(room: Room): void {
+  if (room.matchWinner !== null) {
+    room.matchPoints = room.matchPoints.map(() => 0);
+    room.matchWinner = null;
+  }
   const first = (room.leader + 1) % room.size;
   deal(room, first);
   room.version++;
@@ -258,6 +364,12 @@ export function toView(room: Room, playerId: string | null): PlayerView {
     turn: room.turn,
     yourTurn: room.phase === "playing" && seat >= 0 && room.turn === seat,
     canSwapTrump: seat >= 0 && canSwapTrump(room, seat),
+    blocked: seat >= 0 ? blockedCards(room, seat) : {},
+    matchPoints: room.matchPoints,
+    matchTarget: MATCH_TARGET,
+    matchWinner: room.matchWinner,
+    awards: room.awards,
+    sevenTrumpPlayed: room.sevenTrumpPlayed,
     scores: room.scores,
     tricks: room.tricks,
     lastTrick: room.lastTrick,

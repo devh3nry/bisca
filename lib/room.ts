@@ -44,6 +44,7 @@ export function createRoom(code: string, size: 2 | 4, hostId: string): Room {
     piles: Array.from({ length: teams }, () => []),
     scores: Array(teams).fill(0),
     tricks: Array(teams).fill(0),
+    wonBySeat: Array(size).fill(0),
     lastTrick: null,
     lastWinner: null,
     winner: null,
@@ -98,6 +99,7 @@ export function deal(room: Room, firstSeat = 0): void {
   room.piles = room.piles.map(() => []);
   room.scores = room.scores.map(() => 0);
   room.tricks = room.tricks.map(() => 0);
+  room.wonBySeat = Array(room.size).fill(0);
   room.lastTrick = null;
   room.lastWinner = null;
   room.winner = null;
@@ -233,6 +235,7 @@ function resolveTrick(room: Room): void {
   room.piles[winnerTeam].push(...cards);
   room.scores[winnerTeam] += points;
   room.tricks[winnerTeam]++;
+  room.wonBySeat[winnerSeat] += cards.length;
   room.lastTrick = plays;
   room.lastWinner = winnerSeat;
   room.table = [];
@@ -386,6 +389,7 @@ export function toView(room: Room, playerId: string | null): PlayerView {
     sevenTrumpPlayed: room.sevenTrumpPlayed,
     scores: room.scores,
     tricks: room.tricks,
+    wonBySeat: room.wonBySeat,
     lastTrick: room.lastTrick,
     lastWinner: room.lastWinner,
     winner: room.winner,

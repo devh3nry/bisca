@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CardBack, PlayingCard } from "@/components/Card";
 import { Rules } from "@/components/Rules";
+import { pointsOf } from "@/lib/bisca";
 import type { PlayerView } from "@/lib/types";
 import { loadName, loadPlayerId, saveName, savePlayerId } from "@/lib/session";
 
@@ -36,6 +37,18 @@ const SUIT_GLYPHS: Record<string, string> = {
 
 const RED_SUITS = new Set(["H", "D"]);
 
+// Quanto tempo a vaza fica parada na mesa antes de voar pro montinho.
+const HOLD_MS = 1100;
+const FLY_MS = 650;
+
+type Collect = {
+  key: string;
+  plays: PlayerView["table"];
+  winner: number;
+  points: number;
+  flying: boolean;
+};
+
 const AWARD_ICONS: Record<string, string> = {
   vitoria: "🏆",
   capote: "🧨",
@@ -52,9 +65,51 @@ export default function RoomClient({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const [collect, setCollect] = useState<Collect | null>(null);
   const idRef = useRef<string | null>(null);
   const stateRef = useRef<PlayerView | null>(null);
   stateRef.current = state;
+
+  /*
+   * Quando uma vaza fecha, o servidor já limpa a mesa. Sem nada no meio, as
+   * cartas sumiam num piscar e ninguém sabia se a rodada tinha acabado. Então
+   * seguramos a vaza na mesa por um tempo, mostrando quem levou, e depois
+   * mandamos as cartas voando pro montinho do vencedor.
+   */
+  const trickKey =
+    state?.lastTrick && state.lastWinner !== null
+      ? `${state.lastWinner}:${state.lastTrick.map((p) => p.card).join(",")}`
+      : null;
+
+  useEffect(() => {
+    if (!trickKey || !state?.lastTrick || state.lastWinner === null) return;
+    if (collect?.key === trickKey) return;
+
+    const plays = state.lastTrick;
+    setCollect({
+      key: trickKey,
+      plays,
+      winner: state.lastWinner,
+      points: plays.reduce((total, p) => total + pointsOf(p.card), 0),
+      flying: false,
+    });
+
+    const toFly = setTimeout(
+      () => setCollect((c) => (c && c.key === trickKey ? { ...c, flying: true } : c)),
+      HOLD_MS
+    );
+    const toClear = setTimeout(
+      () => setCollect((c) => (c && c.key === trickKey ? null : c)),
+      HOLD_MS + FLY_MS
+    );
+
+    return () => {
+      clearTimeout(toFly);
+      clearTimeout(toClear);
+    };
+    // `collect` de propósito fora das dependências: ele é o alvo do efeito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trickKey]);
 
   // Ninguém entra sem nome: sem isso a mesa vira "Jogador" contra "Jogador".
   useEffect(() => {
@@ -256,8 +311,19 @@ export default function RoomClient({ code }: { code: string }) {
       : { top: seatAt(2), left: seatAt(1), right: seatAt(3) };
 
   const waiting = state.phase === "lobby";
-  const trick = state.table.length > 0 ? state.table : state.lastTrick ?? [];
-  const showingPast = state.table.length === 0 && !!state.lastTrick;
+  // A mesa ao vivo tem prioridade: se alguém já jogou a próxima carta, corta a
+  // animação em vez de segurar uma vaza velha na tela.
+  const collecting = state.table.length === 0 ? collect : null;
+  const trick = state.table.length > 0 ? state.table : collecting?.plays ?? [];
+
+  /** Pra onde as cartas voam: a direção do lugar do vencedor na tela. */
+  function flyClass(winnerSeat: number): string {
+    if (winnerSeat === mySeat) return "fly-down";
+    if (size === 2) return "fly-up";
+    if (winnerSeat === seatAt(1)) return "fly-left";
+    if (winnerSeat === seatAt(3)) return "fly-right";
+    return "fly-up";
+  }
   const usLabel = size === 4 ? "Nossa dupla" : "Você";
   const themLabel = size === 4 ? "Eles" : "Adversário";
 
@@ -320,7 +386,7 @@ export default function RoomClient({ code }: { code: string }) {
         />
       )}
 
-      <div className="arena">
+      <div className={`arena ${size === 2 ? "duelo" : ""}`}>
         <div className="seat-top">
           <Seat state={state} seat={opponents.top} />
         </div>
@@ -336,23 +402,35 @@ export default function RoomClient({ code }: { code: string }) {
         )}
 
         <div className="center">
-          <div className={`trick ${showingPast ? "past" : ""}`}>
-            {trick.map((play) => (
-              <div
-                key={play.card}
-                className={`played ${
-                  showingPast && play.seat === state.lastWinner ? "winner" : ""
-                }`}
-              >
-                <PlayingCard code={play.card} width={92} />
-                <span>{nameOf(state, play.seat)}</span>
+          <div className="trick-area">
+            {collecting && (
+              <div className="trick-banner">
+                {nameOf(state, collecting.winner)} levou
+                {collecting.points > 0 && <b>+{collecting.points}</b>}
               </div>
-            ))}
-            {trick.length === 0 && (
-              <span className="table-empty">
-                {waiting ? "Esperando jogadores…" : "Ninguém jogou ainda"}
-              </span>
             )}
+            <div
+              className={`trick ${collecting ? "collected" : ""} ${
+                collecting?.flying ? `flying ${flyClass(collecting.winner)}` : ""
+              }`}
+            >
+              {trick.map((play) => (
+                <div
+                  key={play.card}
+                  className={`played ${
+                    collecting && play.seat === collecting.winner ? "winner" : ""
+                  }`}
+                >
+                  <PlayingCard code={play.card} width={92} />
+                  <span>{nameOf(state, play.seat)}</span>
+                </div>
+              ))}
+              {trick.length === 0 && (
+                <span className="table-empty">
+                  {waiting ? "Esperando jogadores…" : "Ninguém jogou ainda"}
+                </span>
+              )}
+            </div>
           </div>
 
           {state.trump && (
@@ -391,8 +469,13 @@ export default function RoomClient({ code }: { code: string }) {
                     ? "É a sua vez — escolha uma carta"
                     : `Vez de ${nameOf(state, state.turn)}`)}
           </p>
-          <div className="hand">
-            {state.hand.map((card) => {
+          <div className="hand-row">
+            <div className="my-pile">
+              <Pile count={state.wonBySeat[mySeat] ?? 0} label="seu montinho" />
+              <span className="my-pile-label">seu montinho</span>
+            </div>
+            <div className="hand">
+              {state.hand.map((card) => {
               const blocked = state.blocked[card];
               return (
                 <button
@@ -410,13 +493,16 @@ export default function RoomClient({ code }: { code: string }) {
                 </button>
               );
             })}
-            {state.hand.length === 0 && waiting && (
-              <>
-                <CardBack width={104} />
-                <CardBack width={104} />
-                <CardBack width={104} />
-              </>
-            )}
+              {state.hand.length === 0 && waiting && (
+                <>
+                  <CardBack width={104} />
+                  <CardBack width={104} />
+                  <CardBack width={104} />
+                </>
+              )}
+            </div>
+            {/* espelho do montinho, só pra manter a mão centralizada */}
+            <div className="my-pile ghost" aria-hidden />
           </div>
           <p className="log">{state.log[0] ?? ""}</p>
         </div>
@@ -539,6 +625,44 @@ function nameOf(state: PlayerView, seat: number): string {
   );
 }
 
+/**
+ * Montinho das cartas que a pessoa levou. Empilha até 5 cartas viradas com um
+ * leve desalinho (como um monte de verdade na mesa) e mostra a contagem.
+ */
+export function Pile({
+  count,
+  label = "montinho",
+}: {
+  count: number;
+  label?: string;
+}) {
+  // Vazio fica invisível mas ocupando lugar, senão a mesa pula quando a
+  // primeira vaza é guardada.
+  if (count === 0) return <div className="pile empty" aria-hidden />;
+
+  const visible = Math.min(count, 5);
+  return (
+    <div className="pile" title={`${count} cartas no montinho`}>
+      {Array.from({ length: visible }).map((_, i) => (
+        <div
+          key={i}
+          className="pile-card"
+          style={{
+            transform: `translate(${i * 2 - 2}px, ${-i * 2}px) rotate(${
+              (i % 2 ? 1 : -1) * (1 + i * 0.7)
+            }deg)`,
+          }}
+        >
+          <CardBack width={44} />
+        </div>
+      ))}
+      <span className="pile-count" aria-label={`${count} cartas no ${label}`}>
+        {count}
+      </span>
+    </div>
+  );
+}
+
 function Seat({
   state,
   seat,
@@ -554,10 +678,14 @@ function Seat({
 
   return (
     <div className="seat">
-      <div className="mini-hand" aria-hidden>
-        {Array.from({ length: count }).map((_, index) => (
-          <CardBack key={index} width={vertical ? 38 : 48} />
-        ))}
+      {/* mão e montinho lado a lado: empilhados, a mesa estourava pra baixo */}
+      <div className="seat-cards">
+        <div className="mini-hand" aria-hidden>
+          {Array.from({ length: count }).map((_, index) => (
+            <CardBack key={index} width={vertical ? 38 : 48} />
+          ))}
+        </div>
+        <Pile count={state.wonBySeat[seat] ?? 0} />
       </div>
       <div className={`seat-name ${state.turn === seat ? "turn" : ""}`}>
         {player?.name ?? "esperando…"}

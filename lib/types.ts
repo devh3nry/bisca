@@ -32,6 +32,7 @@ export type Room = {
   piles: Card[][]; // cartas ganhas, por time
   scores: number[]; // pontos por time
   tricks: number[]; // vazas ganhas por time
+  wonBySeat: number[]; // cartas no montinho de cada lugar (quem puxou a vaza)
 
   lastTrick: Play[] | null;
   lastWinner: number | null;
@@ -87,6 +88,7 @@ export type PlayerView = {
   sevenTrumpPlayed: boolean;
   scores: number[];
   tricks: number[];
+  wonBySeat: number[];
   lastTrick: Play[] | null;
   lastWinner: number | null;
   winner: number | null;

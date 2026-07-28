@@ -480,6 +480,20 @@ input:focus {
   justify-items: center;
 }
 
+/*
+ * Itens de grid não encolhem abaixo do próprio conteúdo por padrão (min-width
+ * auto). Sem isto a mão empurrava a coluna do meio e a mesa vazava pro lado
+ * no celular.
+ */
+.arena > * {
+  min-width: 0;
+}
+
+/* Em 1v1 não existem lugares laterais — as colunas dos lados só roubariam espaço. */
+.arena.duelo {
+  grid-template-columns: 0 1fr 0;
+}
+
 .seat-top {
   grid-area: top;
 }
@@ -548,18 +562,185 @@ input:focus {
   flex-wrap: wrap;
 }
 
-/* Vaza já resolvida: escurece com filtro (opacidade deixava passar o feltro). */
-.trick.past > * {
+.trick-area {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/*
+ * Folga pro banner não encostar no nome de quem está sentado em cima. Só em
+ * tela alta: em notebook baixinho não há esses pixels sobrando, e lá o banner
+ * passar rente ao nome por 1 segundo é melhor do que a mesa ganhar rolagem.
+ */
+@media (min-height: 860px) {
+  .trick-area {
+    padding-top: 10px;
+  }
+}
+
+/*
+ * Quem levou a vaza, dito na cara do jogador antes das cartas irem embora.
+ * Fora do fluxo de propósito: reservar altura pra ele estourava a mesa em
+ * notebook. Como o montinho de quem está em cima agora fica ao lado da mão
+ * dele, e não embaixo, não há mais com o que colidir aqui.
+ */
+.trick-banner {
+  position: absolute;
+  top: -16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #24170a;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  animation: banner-in 0.25s ease-out;
+}
+
+.trick-banner b {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Vaza fechada: escurece as perdedoras e destaca a que ganhou. */
+.trick.collected > .played {
   filter: brightness(0.62) saturate(0.85);
 }
 
-.trick.past > .winner {
+.trick.collected > .winner {
   filter: none;
 }
 
-.trick.past > .winner .card-svg {
+.trick.collected > .winner .card-svg {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
+}
+
+/*
+ * As cartas voam pro montinho de quem levou. A direção vem da classe fly-*,
+ * que o componente escolhe pela posição do vencedor na tela.
+ */
+.trick.flying > .played {
+  transition: transform 0.6s cubic-bezier(0.5, 0, 0.75, 0.3), opacity 0.6s ease-in;
+  opacity: 0;
+}
+
+.trick.flying > .played span {
+  opacity: 0;
+}
+
+.trick.fly-up > .played {
+  transform: translate(0, -230px) scale(0.3);
+}
+
+.trick.fly-down > .played {
+  transform: translate(0, 240px) scale(0.3);
+}
+
+.trick.fly-left > .played {
+  transform: translate(-40vw, 20px) scale(0.3);
+}
+
+.trick.fly-right > .played {
+  transform: translate(40vw, 20px) scale(0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trick.flying > .played {
+    transition: opacity 0.3s linear;
+    transform: none;
+  }
+}
+
+/* ---------- montinho de cartas ganhas ---------- */
+
+.pile {
+  position: relative;
+  width: 40px;
+  height: 54px;
+  flex: none;
+}
+
+.pile.empty {
+  visibility: hidden;
+}
+
+.pile-card {
+  position: absolute;
+  inset: 0;
+}
+
+.pile-card .card-svg {
+  width: 38px;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.seat-cards {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pile-count {
+  position: absolute;
+  right: -8px;
+  bottom: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #24170a;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.hand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  width: 100%;
+}
+
+.my-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.my-pile-label {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+/* Ocupa o mesmo espaço do montinho do outro lado pra mão não sair do centro. */
+.my-pile.ghost {
+  width: 46px;
+  visibility: hidden;
 }
 
 .played {
@@ -884,11 +1065,35 @@ input:focus {
   .trump-badge-glyph {
     font-size: 30px;
   }
+  .pile,
+  .pile.empty {
+    width: 32px;
+    height: 44px;
+  }
+  .pile-card .card-svg {
+    width: 30px;
+  }
+  .my-pile-label {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
   .arena {
     grid-template-columns: 62px 1fr 62px;
+  }
+  /* No celular a mão precisa de toda a largura: o espaçador do outro lado sai. */
+  .hand-row {
+    gap: 8px;
+  }
+  .my-pile.ghost {
+    display: none;
+  }
+  .my-pile-label {
+    display: none;
+  }
+  .table .hand .card-svg {
+    width: max(64px, min(24vw, 15vh, 168px));
   }
   .trump-badge-glyph {
     font-size: 30px;
